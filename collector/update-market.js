@@ -4,7 +4,10 @@ import { getFirestore } from 'firebase-admin/firestore';
 const rawSecret = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
 const jsonString = rawSecret.startsWith('{') ? rawSecret : Buffer.from(rawSecret, 'base64').toString('utf8');
 const serviceAccount = JSON.parse(jsonString);
-
+console.log('PROJECT:', serviceAccount.project_id);
+console.log('KEY LENGTH:', serviceAccount.private_key?.length);
+console.log('STARTS WITH:', JSON.stringify(serviceAccount.private_key?.slice(0, 35)));
+console.log('ENDS WITH:', JSON.stringify(serviceAccount.private_key?.slice(-35)));
 initializeApp({ credential: cert(serviceAccount) });
 const db = getFirestore();
 
