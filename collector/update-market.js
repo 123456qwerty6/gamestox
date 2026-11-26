@@ -1,13 +1,9 @@
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT.trim());
-const rawKey = serviceAccount.private_key
-  .replace(/\\n/g, '\n')
-  .replace('-----BEGIN PRIVATE KEY-----', '')
-  .replace('-----END PRIVATE KEY-----', '')
-  .replace(/\s+/g, '');
-serviceAccount.private_key = `-----BEGIN PRIVATE KEY-----\n${rawKey.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----\n`;
+const rawSecret = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+const jsonString = rawSecret.startsWith('{') ? rawSecret : Buffer.from(rawSecret, 'base64').toString('utf8');
+const serviceAccount = JSON.parse(jsonString);
 
 initializeApp({ credential: cert(serviceAccount) });
 const db = getFirestore();
