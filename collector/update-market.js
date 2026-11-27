@@ -53,35 +53,25 @@ async function getCount(game) {
       const json = await res.json();
       return json?.data?.[0]?.playing ?? null;
     }
-    if (game.source === 'fortnite') {
-  const islands = [
-    'set_br_playlists',       // Battle Royale
-    'set_nobuild_playlists',  // Zero Build
-  ];
+   if (game.source === 'fortnite') {
+  const url = 'https://api.fortnite.com/ecosystem/v1/metrics/minute/in-client-peak-ccu';
+  const res = await fetch(url, { headers: { Accept: 'application/json' } });
 
-  let totalCcu = 0;
-
-  for (const code of islands) {
-    const url = `https://api.fortnite.com/ecosystem/v1/islands/${code}/metrics/ten-minute/peak-ccu`;
-    const res = await fetch(url, { headers: { Accept: 'application/json' } });
-
-    if (!res.ok) {
-      console.warn(`Fortnite ${code} HTTP ${res.status}`);
-      continue;
-    }
-
-    const json = await res.json();
-    const intervals = json?.intervals ?? [];
-    // Grab the most recent non-null interval
-    const valid = intervals.filter((i) => typeof i.value === 'number' && i.value > 0);
-    const latest = valid[valid.length - 1];
-    if (latest) {
-      totalCcu += latest.value;
-    }
+  if (!res.ok) {
+    console.warn(`Fortnite API HTTP ${res.status}:`, await res.text());
+    return null;
   }
 
-  if (totalCcu > 0) return totalCcu;
-  console.warn('Fortnite Epic API returned 0');
+  const json = await res.json();
+  const list = json?.intervals ?? json?.inClientPeakCcu ?? json?.data ?? (Array.isArray(json) ? json : []);
+  const valid = list.filter((item) => typeof item?.value === 'number' && item.value > 0);
+  const latest = valid[valid.length - 1];
+
+  if (latest) {
+    return latest.value;
+  }
+
+  console.warn('Fortnite unexpected JSON:', JSON.stringify(json).slice(0, 300));
   return null;
 }
   } catch (e) {
