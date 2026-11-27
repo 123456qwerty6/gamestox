@@ -8,6 +8,8 @@ const serviceAccount = JSON.parse(jsonString);
 initializeApp({ credential: cert(serviceAccount) });
 const db = getFirestore();
 
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
 const GAMES = [
   { id: 'cs2', source: 'steam', appId: 730 },
   { id: 'pubg', source: 'steam', appId: 578080 },
@@ -19,7 +21,6 @@ const GAMES = [
   { id: 'hd2', source: 'steam', appId: 553850 },
   { id: 'elden', source: 'steam', appId: 1245620 },
   { id: 'balatro', source: 'steam', appId: 2379780 },
-  // --- NEW FAMOUS GAMES ---
   { id: 'gtav', source: 'steam', appId: 271590 },
   { id: 'cod', source: 'steam', appId: 1938090 },
   { id: 'tf2', source: 'steam', appId: 440 },
@@ -75,12 +76,10 @@ async function run() {
     const snap = await docRef.get();
     const existing = snap.exists ? snap.data().history || [] : [];
 
-    // Keep ticks from the last 24 hours (fallback keeps legacy ticks without timestamp)
     const recentTicks = existing
       .filter((entry) => !entry.timestamp || entry.timestamp >= cutoff24h)
       .slice(-287);
 
-    // Calculate true 24-hour rolling average
     const allTicksForAvg = [...recentTicks, { players: count }];
     const rolling24hAvg = Math.round(
       allTicksForAvg.reduce((sum, entry) => sum + entry.players, 0) / allTicksForAvg.length
