@@ -231,7 +231,7 @@ const INITIAL_GAMES = [
     ticker: 'BLOX',
     title: 'Blox Fruits (Roblox)',
     genre: 'Anime Action RPG',
-    badge: '🏴‍☠️ Roblox Mega-Hit',
+    badge: '🏴☠️ Roblox Mega-Hit',
     coverUrl: '',
     gradient: 'linear-gradient(135deg, #2563eb, #0f172a)',
   },
@@ -738,7 +738,6 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const [historyMap, setHistoryMap] = useState({});
-  const [demandMap, setDemandMap] = useState({});
   const [cash, setCash] = useState(10000);
   const [portfolio, setPortfolio] = useState({});
   const [activeTab, setActiveTab] = useState('market');
@@ -823,20 +822,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Listen to hidden demand multipliers
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'demand'), (snapshot) => {
-      const nextDemand = {};
-      snapshot.forEach((docSnap) => {
-        const val = docSnap.data()?.multiplier;
-        if (typeof val === 'number') nextDemand[docSnap.id] = val;
-      });
-      setDemandMap(nextDemand);
-    });
-    return () => unsubscribe();
-  }, []);
-
-const enrichedGames = INITIAL_GAMES.map((g) => {
+  const enrichedGames = INITIAL_GAMES.map((g) => {
     const playersHistory = historyMap[g.id] || [];
     const len = playersHistory.length;
     const latestEntry = len > 0 ? playersHistory[len - 1] : null;
@@ -914,22 +900,6 @@ const enrichedGames = INITIAL_GAMES.map((g) => {
     );
   };
 
-  // Quietly nudge hidden demand multiplier on trade (±0.4% per $1,000, clamped 0.75x - 1.35x)
-  const nudgeDemand = async (gameId, dollarDelta) => {
-    try {
-      const current = demandMap[gameId] ?? 1;
-      const impact = (dollarDelta / 1000) * 0.004;
-      const nextMult = Number(Math.max(0.75, Math.min(1.35, current + impact)).toFixed(4));
-      await setDoc(
-        doc(db, 'demand', gameId),
-        { multiplier: nextMult, updatedAt: Date.now() },
-        { merge: true }
-      );
-    } catch {
-      // Ignore silent demand update errors
-    }
-  };
-
   const handleBuy = async (game, dollarAmt) => {
     if (!user) {
       setShowAuthModal(true);
@@ -952,7 +922,7 @@ const enrichedGames = INITIAL_GAMES.map((g) => {
 
     setCash(nextCash);
     setPortfolio(nextPortfolio);
-    await Promise.all([saveUserState(nextCash, nextPortfolio), nudgeDemand(game.id, amount)]);
+    await saveUserState(nextCash, nextPortfolio);
   };
 
   const handleSell = async (game, dollarAmt) => {
@@ -987,7 +957,7 @@ const enrichedGames = INITIAL_GAMES.map((g) => {
 
     setCash(nextCash);
     setPortfolio(nextPortfolio);
-    await Promise.all([saveUserState(nextCash, nextPortfolio), nudgeDemand(game.id, -sellDollars)]);
+    await saveUserState(nextCash, nextPortfolio);
   };
 
   const resetAccount = async () => {
