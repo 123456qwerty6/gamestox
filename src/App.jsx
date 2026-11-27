@@ -38,6 +38,16 @@ const steamCover = (appId) =>
 
 const INITIAL_GAMES = [
   {
+    id: 'fortnite',
+    source: 'fortnite',
+    ticker: 'FN',
+    title: 'Fortnite (Battle Royale)',
+    genre: 'Battle Royale',
+    badge: '🪂 Epic Mega-Hit',
+    coverUrl: 'https://upload.wikimedia.org/wikipedia/en/a/ae/Fortnite_Save_The_World.jpg',
+    gradient: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+  },
+  {
     id: 'cs2',
     source: 'steam',
     appId: 730,
@@ -47,16 +57,6 @@ const INITIAL_GAMES = [
     badge: '🔥 Steam #1',
     coverUrl: steamCover(730),
     gradient: 'linear-gradient(135deg, #d97706, #78350f)',
-  },
-  {
-    id: 'fortnite',
-    source: 'fortnite',
-    ticker: 'FN',
-    title: 'Fortnite (Battle Royale)',
-    genre: 'Battle Royale',
-    badge: '🪂 Epic Mega-Hit',
-   coverUrl: 'https://upload.wikimedia.org/wikipedia/en/a/ae/Fortnite_Save_The_World.jpg',
-    gradient: 'linear-gradient(135deg, #2563eb, #7c3aed)',
   },
   {
     id: 'pubg',
@@ -232,7 +232,7 @@ const INITIAL_GAMES = [
     title: 'Blox Fruits (Roblox)',
     genre: 'Anime Action RPG',
     badge: '🏴‍☠️ Roblox Mega-Hit',
-    coverUrl: 'https://tr.rbxcdn.com/180DAY-5e8b2c1a4d7c4a0d8b6f3e2a1c9d8e7f/768/432/Image/Webp/noFilter',
+    coverUrl: '',
     gradient: 'linear-gradient(135deg, #2563eb, #0f172a)',
   },
   {
@@ -243,16 +243,16 @@ const INITIAL_GAMES = [
     title: 'Brookhaven RP (Roblox)',
     genre: 'Social Roleplay',
     badge: '🏡 Roblox #1 RP',
-    coverUrl: 'https://tr.rbxcdn.com/180DAY-9a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d/768/432/Image/Webp/noFilter',
+    coverUrl: '',
     gradient: 'linear-gradient(135deg, #0d9488, #134e4a)',
   },
 ];
 
-// Price formula: 1 share = 1,000 24h rolling-average players
 const calcPrice = (players) => Number(Math.max(0.5, players / 1000).toFixed(2));
 
-function InteractiveRealChart({ realHistory, avgBuyPrice }) {
+function InteractiveRealChart({ realHistory, avgBuyPrice, livePrice }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
+  const [chartMode, setChartMode] = useState('price'); // 'price' | 'compare' | 'live'
 
   if (!realHistory || realHistory.length === 0) {
     return (
@@ -270,83 +270,112 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
     );
   }
 
+  // Show the latest 24 hours (up to 288 ticks) on the chart
+  const recent24h = realHistory.slice(-288);
   const series =
-    realHistory.length === 1
+    recent24h.length === 1
       ? [
-          { ...realHistory[0], timeLabel: `${realHistory[0].timeLabel} (Start)` },
-          { ...realHistory[0], timeLabel: `${realHistory[0].timeLabel} (Latest)` },
+          { ...recent24h[0], timeLabel: `${recent24h[0].timeLabel} (Start)` },
+          { ...recent24h[0], timeLabel: `${recent24h[0].timeLabel} (Latest)` },
         ]
-      : realHistory;
+      : recent24h;
 
   const width = 700;
   const height = 220;
   const padLeft = 14;
-  const padRight = 58;
+  const padRight = 62;
   const padTop = 22;
   const padBottom = 26;
   const chartW = width - padLeft - padRight;
   const chartH = height - padTop - padBottom;
 
-  // Use rollingAvg for anti-cheat pricing if available, fallback to raw players for older ticks
-  const values = series.map((d) => d.rollingAvg ?? d.players);
-  const avgPlayers = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
-  const avgPrice = calcPrice(avgPlayers);
+  const primaryValues = series.map((d, idx) => {
+    if (chartMode === 'price') {
+      if (idx === series.length - 1 && livePrice > 0) return livePrice;
+      return calcPrice(d.fairPlayers ?? d.rollingAvg ?? d.players);
+    }
+    return d.players;
+  });
 
-  const rawMin = Math.min(...values, avgPlayers);
-  const rawMax = Math.max(...values, avgPlayers);
-  const spread = rawMax - rawMin || Math.max(10, rawMax * 0.002);
-  const minVal = rawMin - spread * 0.25;
-  const maxVal = rawMax + spread * 0.25;
+  const yesterdayValues =
+    chartMode === 'compare'
+      ? series.map((d) => (typeof d.yesterdayPlayers === 'number' ? d.yesterdayPlayers : null))
+      : [];
+
+  const validYesterday = yesterdayValues.filter((v) => v !== null);
+  const allValsForScale =
+    chartMode === 'compare' && validYesterday.length > 0
+      ? [...primaryValues, ...validYesterday]
+      : primaryValues;
+
+  const avgPrimary =
+    primaryValues.reduce((a, b) => a + b, 0) / (primaryValues.length || 1);
+
+  const rawMin = Math.min(...allValsForScale, avgPrimary);
+  const rawMax = Math.max(...allValsForScale, avgPrimary);
+  const spread = rawMax - rawMin || Math.max(0.5, rawMax * 0.005);
+  const minVal = rawMin - spread * 0.22;
+  const maxVal = rawMax + spread * 0.22;
   const range = maxVal - minVal || 1;
 
   const getX = (idx) => padLeft + (idx / (series.length - 1)) * chartW;
   const getY = (val) => padTop + chartH - ((val - minVal) / range) * chartH;
 
-  const coords = series.map((d, i) => {
-    const pricedCount = d.rollingAvg ?? d.players;
-    return {
-      x: getX(i),
-      y: getY(pricedCount),
-      livePlayers: d.players,
-      pricedPlayers: pricedCount,
-      price: calcPrice(pricedCount),
-      timeLabel: d.timeLabel,
-    };
-  });
+  const coords = series.map((d, i) => ({
+    x: getX(i),
+    y: getY(primaryValues[i]),
+    val: primaryValues[i],
+    yestVal: yesterdayValues[i] ?? null,
+    livePlayers: d.players,
+    price:
+      i === series.length - 1 && livePrice > 0
+        ? livePrice
+        : calcPrice(d.fairPlayers ?? d.rollingAvg ?? d.players),
+    timeLabel: d.timeLabel,
+  }));
 
   const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
   const areaPath = `${linePath} L ${coords[coords.length - 1].x} ${padTop + chartH} L ${
     coords[0].x
   } ${padTop + chartH} Z`;
 
-  const avgY = getY(avgPlayers);
-
-  let highIdx = 0;
-  let lowIdx = 0;
-  values.forEach((v, idx) => {
-    if (v > values[highIdx]) highIdx = idx;
-    if (v < values[lowIdx]) lowIdx = idx;
-  });
+  // Build dotted line path for Yesterday's player count in 'compare' mode
+  let yesterdayPath = '';
+  if (chartMode === 'compare') {
+    let penDown = false;
+    coords.forEach((c) => {
+      if (c.yestVal !== null) {
+        const yY = getY(c.yestVal);
+        yesterdayPath += `${penDown ? 'L' : 'M'} ${c.x} ${yY} `;
+        penDown = true;
+      } else {
+        penDown = false;
+      }
+    });
+  }
 
   const activeIdx =
     selectedIndex !== null && selectedIndex < coords.length ? selectedIndex : coords.length - 1;
   const activePt = coords[activeIdx];
 
-  const isAboveAvg = activePt.pricedPlayers >= avgPlayers;
-  const vsAvgPct =
-    avgPlayers > 0
-      ? (((activePt.pricedPlayers - avgPlayers) / avgPlayers) * 100).toFixed(2)
-      : '0.00';
-  const strokeColor = isAboveAvg ? '#3fb950' : '#f85149';
+  const isPositive =
+    chartMode === 'compare' && activePt.yestVal
+      ? activePt.val >= activePt.yestVal
+      : activePt.val >= coords[0].val;
 
-  const buyPlayersEquiv = avgBuyPrice ? avgBuyPrice * 1000 : null;
+  const strokeColor = isPositive ? '#3fb950' : '#f85149';
+
   const buyY =
-    buyPlayersEquiv && buyPlayersEquiv >= minVal && buyPlayersEquiv <= maxVal
-      ? getY(buyPlayersEquiv)
+    chartMode === 'price' && avgBuyPrice && avgBuyPrice >= minVal && avgBuyPrice <= maxVal
+      ? getY(avgBuyPrice)
       : null;
+
+  const formatAxis = (v) =>
+    chartMode === 'price' ? `$${v.toFixed(2)}` : `${(v / 1000).toFixed(0)}k`;
 
   return (
     <div>
+      {/* 3-Tab Graph Switcher */}
       <div
         style={{
           display: 'flex',
@@ -357,42 +386,75 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
           marginBottom: '12px',
         }}
       >
-        <div>
-          <div style={{ fontSize: '0.78rem', color: '#8b949e', marginBottom: '2px' }}>
-            {selectedIndex !== null
-              ? `📌 Recorded Time: ${activePt.timeLabel}`
-              : `🟢 Latest Cloud Reading (${activePt.timeLabel})`}{' '}
-            •{' '}
-            <span style={{ color: isAboveAvg ? '#3fb950' : '#f85149', fontWeight: 700 }}>
-              {isAboveAvg ? `▲ +${vsAvgPct}% ABOVE` : `▼ ${vsAvgPct}% BELOW`} Period Baseline
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {[
+            { id: 'price', label: '📈 Stock Price' },
+            { id: 'compare', label: '⚔️ Today vs. Yesterday' },
+            { id: 'live', label: '👥 Live Players' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setChartMode(tab.id);
+                setSelectedIndex(null);
+              }}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: chartMode === tab.id ? '1px solid #58a6ff' : '1px solid #30363d',
+                background: chartMode === tab.id ? '#1f2937' : '#0d1117',
+                color: chartMode === tab.id ? '#58a6ff' : '#8b949e',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ fontSize: '0.8rem', color: '#8b949e' }}>
+          {selectedIndex !== null ? `📌 ${activePt.timeLabel}` : `🟢 Latest (${activePt.timeLabel})`}
+        </div>
+      </div>
+
+      {/* Dynamic Header Readout */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', flexWrap: 'wrap', marginBottom: '8px' }}>
+        {chartMode === 'price' && (
+          <>
             <span style={{ fontSize: '1.45rem', fontWeight: 800, color: '#f0f6fc' }}>
               ${activePt.price.toFixed(2)}
             </span>
-            <span style={{ fontSize: '0.95rem', color: '#c9d1d9', fontWeight: 600 }}>
-              🛡️ 24H Rolling Avg: {activePt.pricedPlayers.toLocaleString()}
+            <span style={{ fontSize: '0.9rem', color: '#8b949e' }}>
+              👥 {activePt.livePlayers.toLocaleString()} live players
             </span>
-            <span style={{ fontSize: '0.82rem', color: '#8b949e' }}>
-              (Live Snapshot: {activePt.livePlayers.toLocaleString()} players)
-            </span>
-          </div>
-        </div>
+          </>
+        )}
 
-        <div
-          style={{
-            background: '#161b22',
-            border: '1px solid #30363d',
-            padding: '5px 10px',
-            borderRadius: '6px',
-            fontSize: '0.78rem',
-            color: '#58a6ff',
-            fontWeight: 700,
-          }}
-        >
-          24H Rolling Price ({realHistory.length} ticks)
-        </div>
+        {chartMode === 'compare' && (
+          <>
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f0f6fc' }}>
+              Today: {activePt.livePlayers.toLocaleString()}
+            </span>
+            {activePt.yestVal ? (
+              <span style={{ fontSize: '0.95rem', color: isPositive ? '#3fb950' : '#f85149', fontWeight: 700 }}>
+                vs. Yesterday: {activePt.yestVal.toLocaleString()} (
+                {(((activePt.livePlayers - activePt.yestVal) / activePt.yestVal) * 100).toFixed(1)}%)
+              </span>
+            ) : (
+              <span style={{ fontSize: '0.85rem', color: '#d29922' }}>
+                Collecting 24h baseline for yesterday's dotted line...
+              </span>
+            )}
+          </>
+        )}
+
+        {chartMode === 'live' && (
+          <span style={{ fontSize: '1.35rem', fontWeight: 800, color: '#f0f6fc' }}>
+            👥 {activePt.livePlayers.toLocaleString()} live concurrent players
+          </span>
+        )}
       </div>
 
       <svg
@@ -402,51 +464,23 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
       >
         <defs>
           <linearGradient id="realAreaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.28" />
+            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.25" />
             <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
           </linearGradient>
         </defs>
 
         {[0, 0.5, 1].map((ratio, idx) => {
           const gy = padTop + chartH * ratio;
-          const valAtLine = Math.round(maxVal - range * ratio);
+          const valAtLine = maxVal - range * ratio;
           return (
             <g key={idx}>
-              <line
-                x1={padLeft}
-                y1={gy}
-                x2={width - padRight}
-                y2={gy}
-                stroke="#21262d"
-                strokeWidth="1"
-              />
+              <line x1={padLeft} y1={gy} x2={width - padRight} y2={gy} stroke="#21262d" strokeWidth="1" />
               <text x={width - padRight + 6} y={gy + 4} fill="#6e7681" fontSize="10">
-                ${calcPrice(valAtLine).toFixed(2)}
+                {formatAxis(valAtLine)}
               </text>
             </g>
           );
         })}
-
-        <line
-          x1={padLeft}
-          y1={avgY}
-          x2={width - padRight}
-          y2={avgY}
-          stroke="#d29922"
-          strokeWidth="1.5"
-          strokeDasharray="5,5"
-        />
-        <rect x={width - padRight + 4} y={avgY - 9} width="52" height="18" rx="4" fill="#d29922" />
-        <text
-          x={width - padRight + 30}
-          y={avgY + 3}
-          textAnchor="middle"
-          fill="#0d1117"
-          fontSize="9"
-          fontWeight="800"
-        >
-          BASE ${avgPrice.toFixed(1)}
-        </text>
 
         {buyY !== null && (
           <>
@@ -465,6 +499,17 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
           </>
         )}
 
+        {/* Yesterday dotted overlay in Compare mode */}
+        {chartMode === 'compare' && yesterdayPath && (
+          <path
+            d={yesterdayPath}
+            fill="none"
+            stroke="#8b949e"
+            strokeWidth="2"
+            strokeDasharray="5,5"
+          />
+        )}
+
         <path d={areaPath} fill="url(#realAreaGrad)" />
         <path
           d={linePath}
@@ -475,42 +520,14 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
           strokeLinejoin="round"
         />
 
-        {coords.map((c, idx) => (
-          <circle
-            key={idx}
-            cx={c.x}
-            cy={c.y}
-            r={idx === activeIdx ? '6' : '2.8'}
-            fill={strokeColor}
-            stroke={idx === activeIdx ? '#0d1117' : 'none'}
-            strokeWidth="2"
-          />
-        ))}
-
-        {realHistory.length > 1 && (
-          <>
-            <text
-              x={coords[highIdx].x}
-              y={Math.max(12, coords[highIdx].y - 8)}
-              textAnchor="middle"
-              fill="#3fb950"
-              fontSize="10"
-              fontWeight="700"
-            >
-              HIGH ${coords[highIdx].price.toFixed(2)}
-            </text>
-            <text
-              x={coords[lowIdx].x}
-              y={Math.min(height - 6, coords[lowIdx].y + 15)}
-              textAnchor="middle"
-              fill="#f85149"
-              fontSize="10"
-              fontWeight="700"
-            >
-              LOW ${coords[lowIdx].price.toFixed(2)}
-            </text>
-          </>
-        )}
+        <circle
+          cx={activePt.x}
+          cy={activePt.y}
+          r="5.5"
+          fill={strokeColor}
+          stroke="#0d1117"
+          strokeWidth="2"
+        />
 
         <line
           x1={activePt.x}
@@ -549,7 +566,11 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
         }}
       >
         <span>{series[0]?.timeLabel}</span>
-        <span>Prices use a 24H rolling average so day/night cycles cannot be farmed</span>
+        <span>
+          {chartMode === 'compare'
+            ? 'Solid = Today • Dotted = Same Time Yesterday'
+            : 'Hover or click any point to inspect'}
+        </span>
         <span>{series[series.length - 1]?.timeLabel}</span>
       </div>
     </div>
@@ -717,6 +738,7 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const [historyMap, setHistoryMap] = useState({});
+  const [demandMap, setDemandMap] = useState({});
   const [cash, setCash] = useState(10000);
   const [portfolio, setPortfolio] = useState({});
   const [activeTab, setActiveTab] = useState('market');
@@ -726,7 +748,6 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  // Listen for Firebase Auth state changes
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -735,7 +756,6 @@ export default function App() {
     return () => unsubAuth();
   }, []);
 
-  // Load and sync logged-in user's portfolio from Firestore users/{uid}
   useEffect(() => {
     if (!authReady) return;
 
@@ -777,7 +797,7 @@ export default function App() {
     return () => unsubUser();
   }, [user, authReady]);
 
-  // Real-time Firestore listener for market prices
+  // Listen to market history
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'market'), (snapshot) => {
       const nextMap = {};
@@ -803,24 +823,42 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Listen to hidden demand multipliers
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'demand'), (snapshot) => {
+      const nextDemand = {};
+      snapshot.forEach((docSnap) => {
+        const val = docSnap.data()?.multiplier;
+        if (typeof val === 'number') nextDemand[docSnap.id] = val;
+      });
+      setDemandMap(nextDemand);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const enrichedGames = INITIAL_GAMES.map((g) => {
     const playersHistory = historyMap[g.id] || [];
     const len = playersHistory.length;
     const latestEntry = len > 0 ? playersHistory[len - 1] : null;
-    const firstEntry = len > 0 ? playersHistory[0] : null;
+    const recent24h = playersHistory.slice(-288);
+    const openEntry = recent24h.length > 0 ? recent24h[0] : latestEntry;
 
     const currentPlayers = latestEntry ? latestEntry.players : 0;
-    const pricedPlayers = latestEntry ? latestEntry.rollingAvg ?? latestEntry.players : 0;
-    const openPricedPlayers = firstEntry
-      ? firstEntry.rollingAvg ?? firstEntry.players
-      : pricedPlayers;
+    const basePlayers = latestEntry
+      ? latestEntry.fairPlayers ?? latestEntry.rollingAvg ?? latestEntry.players
+      : 0;
+    const openBasePlayers = openEntry
+      ? openEntry.fairPlayers ?? openEntry.rollingAvg ?? openEntry.players
+      : basePlayers;
 
-    const price = pricedPlayers > 0 ? calcPrice(pricedPlayers) : 0;
-    const openPrice = openPricedPlayers > 0 ? calcPrice(openPricedPlayers) : price;
+    // Quietly apply hidden user-demand multiplier
+    const demandMult = demandMap[g.id] ?? 1;
+    const price = basePlayers > 0 ? Number((calcPrice(basePlayers) * demandMult).toFixed(2)) : 0;
+    const openPrice = openBasePlayers > 0 ? calcPrice(openBasePlayers) : price;
     const changePct =
       openPrice > 0 ? Number((((price - openPrice) / openPrice) * 100).toFixed(2)) : 0;
 
-    return { ...g, playersHistory, currentPlayers, pricedPlayers, price, changePct };
+    return { ...g, playersHistory, currentPlayers, price, changePct };
   });
 
   const holdingsList = Object.entries(portfolio)
@@ -869,6 +907,22 @@ export default function App() {
     );
   };
 
+  // Quietly nudge hidden demand multiplier on trade (±0.4% per $1,000, clamped 0.75x - 1.35x)
+  const nudgeDemand = async (gameId, dollarDelta) => {
+    try {
+      const current = demandMap[gameId] ?? 1;
+      const impact = (dollarDelta / 1000) * 0.004;
+      const nextMult = Number(Math.max(0.75, Math.min(1.35, current + impact)).toFixed(4));
+      await setDoc(
+        doc(db, 'demand', gameId),
+        { multiplier: nextMult, updatedAt: Date.now() },
+        { merge: true }
+      );
+    } catch {
+      // Ignore silent demand update errors
+    }
+  };
+
   const handleBuy = async (game, dollarAmt) => {
     if (!user) {
       setShowAuthModal(true);
@@ -891,7 +945,7 @@ export default function App() {
 
     setCash(nextCash);
     setPortfolio(nextPortfolio);
-    await saveUserState(nextCash, nextPortfolio);
+    await Promise.all([saveUserState(nextCash, nextPortfolio), nudgeDemand(game.id, amount)]);
   };
 
   const handleSell = async (game, dollarAmt) => {
@@ -926,7 +980,7 @@ export default function App() {
 
     setCash(nextCash);
     setPortfolio(nextPortfolio);
-    await saveUserState(nextCash, nextPortfolio);
+    await Promise.all([saveUserState(nextCash, nextPortfolio), nudgeDemand(game.id, -sellDollars)]);
   };
 
   const resetAccount = async () => {
@@ -946,7 +1000,7 @@ export default function App() {
   return (
     <div>
       <div className="ticker-bar">
-        <span>🟢 24/7 CLOUD MARKET {lastUpdated ? `(Last Cloud Sync: ${lastUpdated})` : ''}:</span>
+        <span>🟢 24/7 CLOUD MARKET {lastUpdated ? `(Last Sync: ${lastUpdated})` : ''}:</span>
         {enrichedGames.map((g) => (
           <span key={g.id}>
             <strong>{g.ticker}</strong>{' '}
@@ -1072,7 +1126,9 @@ export default function App() {
                     <div
                       className="card-banner"
                       style={{
-                        backgroundImage: `url(${game.coverUrl}), ${game.gradient}`,
+                        backgroundImage: game.coverUrl
+                          ? `url(${game.coverUrl}), ${game.gradient}`
+                          : game.gradient,
                       }}
                     >
                       <span className="badge">{game.badge}</span>
@@ -1086,7 +1142,7 @@ export default function App() {
                         <div>
                           <div className="game-title">{game.title}</div>
                           <div className="ticker-tag">
-                            {game.ticker} • 24H ROLLING PRICE
+                            {game.ticker} • LIVE MARKET
                           </div>
                         </div>
                         <div className="price-block">
@@ -1241,7 +1297,9 @@ export default function App() {
               style={{
                 height: '130px',
                 borderRadius: '10px',
-                backgroundImage: `linear-gradient(to top, rgba(22,27,34,1) 5%, rgba(22,27,34,0.25) 100%), url(${selectedGame.coverUrl})`,
+                backgroundImage: selectedGame.coverUrl
+                  ? `linear-gradient(to top, rgba(22,27,34,1) 5%, rgba(22,27,34,0.25) 100%), url(${selectedGame.coverUrl})`
+                  : selectedGame.gradient,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 marginBottom: '14px',
@@ -1269,6 +1327,7 @@ export default function App() {
               <InteractiveRealChart
                 realHistory={selectedGame.playersHistory}
                 avgBuyPrice={selectedAvgBuy}
+                livePrice={selectedGame.price}
               />
             </div>
 
