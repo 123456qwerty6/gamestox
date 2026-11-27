@@ -53,64 +53,50 @@ async function getCount(game) {
       const json = await res.json();
       return json?.data?.[0]?.playing ?? null;
     }
-if (game.source === 'fortnite') {
-  // Core Epic-made Fortnite playlists (Battle Royale, Zero Build, Reload, Ranked)
-  const playlists = [
-    'playlist_defaultsolo',
-    'playlist_defaultduo',
-    'playlist_trios',
-    'playlist_defaultsquad',
-    'playlist_nobuildbr_solo',
-    'playlist_nobuildbr_duo',
-    'playlist_nobuildbr_trio',
-    'playlist_nobuildbr_squad',
-    'playlist_blastberry_solo',
-    'playlist_blastberry_duo',
-    'playlist_blastberry_squad',
-    'playlist_ranked_solo',
-    'playlist_ranked_duo',
-    'playlist_ranked_squad',
-  ];
+    if (game.source === 'fortnite') {
+      const playlists = [
+        'playlist_defaultsolo',
+        'playlist_defaultduo',
+        'playlist_trios',
+        'playlist_defaultsquad',
+        'playlist_nobuildbr_solo',
+        'playlist_nobuildbr_duo',
+        'playlist_nobuildbr_trio',
+        'playlist_nobuildbr_squad',
+        'playlist_blastberry_solo',
+        'playlist_blastberry_duo',
+        'playlist_blastberry_squad',
+        'playlist_ranked_solo',
+        'playlist_ranked_duo',
+        'playlist_ranked_squad',
+      ];
 
-  // Query the last 30 minutes so the latest 10-minute Epic interval is always included
-  const fromIso = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-  let totalCcu = 0;
+      const fromIso = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      let totalCcu = 0;
 
-  for (const code of playlists) {
-    try {
-      const url = `https://api.fortnite.com/ecosystem/v1/islands/${code}/metrics/minute/peak-ccu?from=${encodeURIComponent(fromIso)}`;
-      const res = await fetch(url, {
-        headers: { Accept: 'application/json' },
-      });
-      if (!res.ok) continue;
-      const json = await res.json();
-      const intervals = json?.intervals ?? [];
-      const latest = intervals[intervals.length - 1];
-      if (latest && typeof latest.value === 'number' && latest.value > 0) {
-        totalCcu += latest.value;
+      for (const code of playlists) {
+        try {
+          const url = `https://api.fortnite.com/ecosystem/v1/islands/${code}/metrics/minute/peak-ccu?from=${encodeURIComponent(fromIso)}`;
+          const res = await fetch(url, {
+            headers: { Accept: 'application/json' },
+          });
+          if (!res.ok) continue;
+          const json = await res.json();
+          const intervals = json?.intervals ?? [];
+          const latest = intervals[intervals.length - 1];
+          if (latest && typeof latest.value === 'number' && latest.value > 0) {
+            totalCcu += latest.value;
+          }
+        } catch {
+          // Skip individual playlist timeout and keep summing the rest
+        }
       }
-    } catch {
-      // Skip individual playlist timeout and keep summing the rest
-    }
-  }
 
-  if (totalCcu > 0) {
-    return totalCcu;
-  }
-
-  console.warn('Fortnite Epic API returned 0 across playlists');
-  return null;
-}
-      });
-      const html = await res.text();
-      const match =
-        html.match(/Players Online<\/div>\s*<div[^>]*>([\d,]+)/i) ||
-        html.match(/"ccu"\s*:\s*(\d+)/i) ||
-        html.match(/([\d,]{6,})\s*Players Online/i);
-      if (match) {
-        return Number(match[1].replace(/,/g, ''));
+      if (totalCcu > 0) {
+        return totalCcu;
       }
-      console.warn('Fortnite count not found in response, status:', res.status);
+
+      console.warn('Fortnite Epic API returned 0 across playlists');
       return null;
     }
   } catch (e) {
