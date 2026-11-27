@@ -1181,7 +1181,7 @@ export default function App() {
     showToast(`Bought ${sharesBought.toFixed(3)} ${game.ticker} for $${amount.toFixed(2)}`, 'buy');
   };
 
-  const handleSell = async (game, dollarAmt) => {
+  const handleSellAll = async (game) => {
     if (!user) {
       setShowAuthModal(true);
       return;
@@ -1190,32 +1190,25 @@ export default function App() {
     const existing = portfolio[game.id];
     if (!existing || existing.shares <= 0.0001 || game.price <= 0) return;
 
-    const maxDollarValue = existing.shares * game.price;
-    const sellDollars = Math.min(Number(dollarAmt), maxDollarValue);
-    if (!sellDollars || sellDollars <= 0) return;
-
-    const sharesSold = sellDollars / game.price;
-    const fractionSold = sharesSold / existing.shares;
-    const costRemoved = existing.totalCost * fractionSold;
-
+    const sellDollars = Number((existing.shares * game.price).toFixed(2));
+    const sharesSold = existing.shares;
     const nextCash = Number((cash + sellDollars).toFixed(2));
-    const remainingShares = existing.shares - sharesSold;
 
     const nextPortfolio = {
       ...portfolio,
-      [game.id]:
-        remainingShares < 0.0001
-          ? { shares: 0, totalCost: 0 }
-          : {
-              shares: remainingShares,
-              totalCost: existing.totalCost - costRemoved,
-            },
+      [game.id]: { shares: 0, totalCost: 0 },
     };
 
     setCash(nextCash);
     setPortfolio(nextPortfolio);
-    await saveUserState(nextCash, nextPortfolio);
-    showToast(`Sold ${sharesSold.toFixed(3)} ${game.ticker} for $${sellDollars.toFixed(2)}`, 'sell');
+
+    await updateDoc(doc(db, 'users', user.uid), {
+      cash: nextCash,
+      [`portfolio.${game.id}`]: { shares: 0, totalCost: 0 },
+      updatedAt: Date.now(),
+    });
+
+    showToast(`Sold all ${sharesSold.toFixed(3)} ${game.ticker} for $${sellDollars.toFixed(2)}`, 'sell');
   };
 
   const resetAccount = async () => {
@@ -1592,12 +1585,12 @@ export default function App() {
                       >
                         Graph / Trade
                       </button>
-                      <button
-                        className="small-btn cashout-btn"
-                        onClick={() => handleSell(h, h.currentValue)}
-                      >
-                        Sell All (${h.currentValue.toFixed(2)})
-                      </button>
+                     <button
+  className="small-btn cashout-btn"
+  onClick={() => handleSellAll(h)}
+>
+  Sell All (${h.currentValue.toFixed(2)})
+</button>
                     </div>
                   </div>
                 ))
