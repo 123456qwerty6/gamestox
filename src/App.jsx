@@ -55,7 +55,7 @@ const INITIAL_GAMES = [
     title: 'Fortnite (Battle Royale)',
     genre: 'Battle Royale',
     badge: '🪂 Epic Mega-Hit',
-    coverUrl: 'https://cdn2.unrealengine.com/fortnite-chapter-5-season-1-1920x1080-9549c2464615.jpg',
+   coverUrl: 'https://upload.wikimedia.org/wikipedia/en/a/ae/Fortnite_Save_The_World.jpg',
     gradient: 'linear-gradient(135deg, #2563eb, #7c3aed)',
   },
   {
