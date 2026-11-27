@@ -6,6 +6,7 @@ import {
   doc,
   onSnapshot,
   setDoc,
+  updateDoc,
   getDoc,
   getDocs,
   query,
@@ -1063,22 +1064,18 @@ export default function App() {
   const selectedGame = enrichedGames.find((g) => g.id === selectedGameId);
   const selectedHolding = selectedGameId ? portfolio[selectedGameId] : null;
   const selectedAvgBuy =
-    selectedHolding && selectedHolding.shares > 0
+    selectedHolding && selectedHolding.shares > 0.0001
       ? selectedHolding.totalCost / selectedHolding.shares
       : null;
 
   const saveUserState = async (nextCash, nextPortfolio) => {
     if (!user) return;
     const userDocRef = doc(db, 'users', user.uid);
-    await setDoc(
-      userDocRef,
-      {
-        cash: nextCash,
-        portfolio: nextPortfolio,
-        updatedAt: Date.now(),
-      },
-      { merge: true }
-    );
+    await updateDoc(userDocRef, {
+      cash: nextCash,
+      portfolio: nextPortfolio,
+      updatedAt: Date.now(),
+    });
   };
 
   const handleSaveName = async (e) => {
@@ -1191,7 +1188,7 @@ export default function App() {
     }
 
     const existing = portfolio[game.id];
-    if (!existing || existing.shares <= 0 || game.price <= 0) return;
+    if (!existing || existing.shares <= 0.0001 || game.price <= 0) return;
 
     const maxDollarValue = existing.shares * game.price;
     const sellDollars = Math.min(Number(dollarAmt), maxDollarValue);
@@ -1203,16 +1200,17 @@ export default function App() {
 
     const nextCash = Number((cash + sellDollars).toFixed(2));
     const remainingShares = existing.shares - sharesSold;
-    const nextPortfolio = { ...portfolio };
 
-    if (remainingShares < 0.0001) {
-      delete nextPortfolio[game.id];
-    } else {
-      nextPortfolio[game.id] = {
-        shares: remainingShares,
-        totalCost: existing.totalCost - costRemoved,
-      };
-    }
+    const nextPortfolio = {
+      ...portfolio,
+      [game.id]:
+        remainingShares < 0.0001
+          ? { shares: 0, totalCost: 0 }
+          : {
+              shares: remainingShares,
+              totalCost: existing.totalCost - costRemoved,
+            },
+    };
 
     setCash(nextCash);
     setPortfolio(nextPortfolio);
@@ -1432,7 +1430,7 @@ export default function App() {
 
             <div className="game-grid">
               {filteredGames.map((game) => {
-                const owned = portfolio[game.id];
+                const owned = portfolio[game.id]?.shares > 0.0001 ? portfolio[game.id] : null;
                 return (
                   <div
                     key={game.id}
@@ -1593,12 +1591,6 @@ export default function App() {
                         onClick={() => setSelectedGameId(h.id)}
                       >
                         Graph / Trade
-                      </button>
-                      <button
-                        className="small-btn cashout-btn"
-                        onClick={() => handleSell(h, h.currentValue)}
-                      >
-                        Sell All (${h.currentValue.toFixed(2)})
                       </button>
                     </div>
                   </div>
@@ -2006,7 +1998,7 @@ export default function App() {
                 >
                   <div>
                     <h4 style={{ marginBottom: '6px' }}>Your Position</h4>
-                    {portfolio[selectedGame.id] ? (
+                    {portfolio[selectedGame.id]?.shares > 0.0001 ? (
                       <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                         You own <strong>{portfolio[selectedGame.id].shares.toFixed(3)} shares</strong>{' '}
                         worth{' '}
@@ -2035,7 +2027,10 @@ export default function App() {
                     <button
                       className="action-btn sell-btn"
                       disabled={
-                        !portfolio[selectedGame.id] || !Number(tradeAmount) || selectedGame.price <= 0
+                        !portfolio[selectedGame.id] ||
+                        portfolio[selectedGame.id].shares <= 0.0001 ||
+                        !Number(tradeAmount) ||
+                        selectedGame.price <= 0
                       }
                       onClick={() => handleSell(selectedGame, tradeAmount)}
                     >
