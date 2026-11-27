@@ -1182,7 +1182,7 @@ export default function App() {
     showToast(`Bought ${sharesBought.toFixed(3)} ${game.ticker} for $${amount.toFixed(2)}`, 'buy');
   };
 
-  const handleSell = async (game, dollarAmt) => {
+ const handleSell = async (game, dollarAmt) => {
     if (!user) {
       setShowAuthModal(true);
       return;
@@ -1205,16 +1205,23 @@ export default function App() {
 
     if (remainingShares < 0.0001) {
       delete nextPortfolio[game.id];
+      setCash(nextCash);
+      setPortfolio(nextPortfolio);
+      await updateDoc(doc(db, 'users', user.uid), {
+        cash: nextCash,
+        [`portfolio.${game.id}`]: deleteField(),
+        updatedAt: Date.now(),
+      });
     } else {
       nextPortfolio[game.id] = {
         shares: remainingShares,
         totalCost: existing.totalCost - costRemoved,
       };
+      setCash(nextCash);
+      setPortfolio(nextPortfolio);
+      await saveUserState(nextCash, nextPortfolio);
     }
 
-    setCash(nextCash);
-    setPortfolio(nextPortfolio);
-    await saveUserState(nextCash, nextPortfolio);
     showToast(`Sold ${sharesSold.toFixed(3)} ${game.ticker} for $${sellDollars.toFixed(2)}`, 'sell');
   };
 
