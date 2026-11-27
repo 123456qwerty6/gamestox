@@ -1,567 +1,2060 @@
-:root {
-  --bg-main: #0d1117;
-  --bg-card: #161b22;
-  --bg-hover: #1f2630;
-  --border: #30363d;
-  --text-main: #f0f6fc;
-  --text-muted: #8b949e;
-  --green: #2ea043;
-  --green-soft: rgba(46, 160, 67, 0.15);
-  --red: #f85149;
-  --red-soft: rgba(248, 81, 73, 0.15);
-  --accent: #58a6ff;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-body {
-  background-color: var(--bg-main);
-  color: var(--text-main);
-}
-
-/* Navbar & Ticker */
-.ticker-bar {
-  background: #090c10;
-  border-bottom: 1px solid var(--border);
-  padding: 6px 16px;
-  font-size: 0.82rem;
-  display: flex;
-  gap: 24px;
-  overflow-x: auto;
-  white-space: nowrap;
-}
-
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 28px;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.brand {
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.nav-tabs {
-  display: flex;
-  gap: 10px;
-}
-
-.tab-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-muted);
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.15s;
-}
-
-.tab-btn.active {
-  background: var(--bg-hover);
-  color: var(--text-main);
-  border-color: var(--border);
-}
-
-.wallet-stats {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.stat-pill {
-  text-align: right;
-}
-
-.stat-label {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-}
-
-.stat-value {
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.sim-btn {
-  background: var(--accent);
-  color: #0d1117;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.sim-btn:hover {
-  opacity: 0.9;
-}
-
-/* Main Container */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 28px 20px;
-}
-
-/* Filter Bar */
-.controls-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.filter-pills {
-  display: flex;
-  gap: 8px;
-}
-
-.pill {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  padding: 6px 14px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 0.88rem;
-  font-weight: 600;
-}
-
-.pill.active {
-  background: var(--text-main);
-  color: var(--bg-main);
-}
-
-/* Game Grid */
-.game-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 18px;
-}
-
-.game-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s;
-}
-
-.game-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--accent);
-}
-
-.card-banner {
-  height: 110px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  position: relative;
-}
-
-.badge {
-  align-self: flex-start;
-  background: rgba(13, 17, 23, 0.8);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.card-body {
-  padding: 16px;
-}
-
-.card-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 10px;
-}
-
-.game-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.ticker-tag {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-
-.price-block {
-  text-align: right;
-}
-
-.share-price {
-  font-size: 1.15rem;
-  font-weight: 800;
-}
-
-.pct-badge {
-  font-size: 0.8rem;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  display: inline-block;
-  margin-top: 2px;
-}
-
-.up {
-  color: #3fb950;
-  background: var(--green-soft);
-}
-
-.down {
-  color: var(--red);
-  background: var(--red-soft);
-}
-
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  font-size: 0.84rem;
-  color: var(--text-muted);
-}
-
-/* Modal / Detail Window */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.78);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 50;
-}
-
-.modal-box {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  max-width: 780px;
-  width: 100%;
-  padding: 24px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
-}
-
-.close-btn {
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  color: var(--text-main);
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.chart-box {
-  background: #0d1117;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 20px;
-}
-
-.chart-legend {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  margin-bottom: 10px;
-  color: var(--text-muted);
-}
-
-.trade-panel {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-@media (max-width: 650px) {
-  .trade-panel {
-    grid-template-columns: 1fr;
-  }
-}
-
-.trade-box {
-  background: #0d1117;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.quick-amounts {
-  display: flex;
-  gap: 8px;
-  margin: 12px 0;
-}
-
-.amt-btn {
-  flex: 1;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-main);
-  padding: 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.82rem;
-}
-
-.amt-btn:hover {
-  border-color: var(--accent);
-}
-
-.amount-input {
-  width: 100%;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-main);
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-
-.action-btn {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  font-weight: 700;
-  font-size: 0.95rem;
-  cursor: pointer;
-  margin-top: 8px;
-}
-
-.buy-btn {
-  background: var(--green);
-  color: white;
-}
-
-.sell-btn {
-  background: var(--red);
-  color: white;
-}
-
-.action-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* My Shares (Portfolio) Window */
-.portfolio-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.summary-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 18px;
-}
-
-.summary-card h3 {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-
-.summary-card .big-num {
-  font-size: 1.65rem;
-  font-weight: 800;
-}
-
-.holding-row {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-  gap: 14px;
-}
-
-.holding-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.small-btn {
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  font-weight: 700;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.cashout-btn {
-  background: var(--red-soft);
-  color: var(--red);
-  border-color: rgba(248, 81, 73, 0.4);
-}
-.card-banner {
-  height: 135px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  position: relative;
-  background-size: cover;
-  background-position: center;
-  overflow: hidden;
-}
-
-.card-banner::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(13, 17, 23, 0.92) 0%, rgba(13, 17, 23, 0.2) 60%, rgba(13, 17, 23, 0.45) 100%);
-  pointer-events: none;
-}
-
-.card-banner > * {
-  position: relative;
-  z-index: 2;
-}
-
-.badge {
-  align-self: flex-start;
-  background: rgba(13, 17, 23, 0.85);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-.search-sort-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-
-.toast-banner {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 12px 20px;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 0.92rem;
-  color: #ffffff;
-  z-index: 9999;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  white-space: nowrap;
-}
-
-.toast-buy {
-  background: #238636;
-  border: 1px solid #3fb950;
-}
-
-.toast-sell {
-  background: #da3633;
-  border: 1px solid #f85149;
-}
-
-@media (max-width: 768px) {
-  .navbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    padding: 12px 14px;
+import { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import {
+  getFirestore,
+  collection,
+  doc,
+  onSnapshot,
+  setDoc,
+  updateDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  arrayUnion,
+  arrayRemove,
+} from 'firebase/firestore';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import './App.css';
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyBl3w5TZ7flwkeoJ6SGUZZoXFmeIKieZFE',
+  authDomain: 'gamestox.firebaseapp.com',
+  projectId: 'gamestox',
+  storageBucket: 'gamestox.firebasestorage.app',
+  messagingSenderId: '125113141786',
+  appId: '1:125113141786:web:b52a271546231909545fa3',
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+const steamCover = (appId) =>
+  `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`;
+
+const INITIAL_GAMES = [
+  {
+    id: 'fortnite',
+    source: 'fortnite',
+    ticker: 'FN',
+    title: 'Fortnite (Battle Royale)',
+    genre: 'Battle Royale',
+    badge: '🪂 Epic Mega-Hit',
+    coverUrl: 'https://upload.wikimedia.org/wikipedia/en/a/ae/Fortnite_Save_The_World.jpg',
+    gradient: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+  },
+  {
+    id: 'cs2',
+    source: 'steam',
+    appId: 730,
+    ticker: 'CS2',
+    title: 'Counter-Strike 2',
+    genre: 'Tactical Shooter',
+    badge: '🔥 Steam #1',
+    coverUrl: steamCover(730),
+    gradient: 'linear-gradient(135deg, #d97706, #78350f)',
+  },
+  {
+    id: 'pubg',
+    source: 'steam',
+    appId: 578080,
+    ticker: 'PUBG',
+    title: 'PUBG: BATTLEGROUNDS',
+    genre: 'Battle Royale',
+    badge: '🪖 Battle Royale',
+    coverUrl: steamCover(578080),
+    gradient: 'linear-gradient(135deg, #ca8a04, #422006)',
+  },
+  {
+    id: 'dota2',
+    source: 'steam',
+    appId: 570,
+    ticker: 'DOTA',
+    title: 'Dota 2',
+    genre: 'MOBA',
+    badge: '🏆 Esports Giant',
+    coverUrl: steamCover(570),
+    gradient: 'linear-gradient(135deg, #b91c1c, #31102f)',
+  },
+  {
+    id: 'rivals',
+    source: 'steam',
+    appId: 2767030,
+    ticker: 'MRVL',
+    title: 'Marvel Rivals',
+    genre: 'Hero Shooter',
+    badge: '🦸 Hero Shooter',
+    coverUrl: steamCover(2767030),
+    gradient: 'linear-gradient(135deg, #2563eb, #1e1b4b)',
+  },
+  {
+    id: 'minecraft',
+    source: 'minecraft',
+    serverIp: 'mc.hypixel.net',
+    ticker: 'MC',
+    title: 'Minecraft (Hypixel Live)',
+    genre: 'Sandbox / Multiplayer',
+    badge: '⛏️ Live Server Pulse',
+    coverUrl:
+      'https://www.minecraft.net/content/dam/games/minecraft/key-art/Vanilla-PMP_Collection-Carousel-0_Buzzy-Bees_1280x768.jpg',
+    gradient: 'linear-gradient(135deg, #16a34a, #14532d)',
+  },
+  {
+    id: 'apex',
+    source: 'steam',
+    appId: 1172470,
+    ticker: 'APEX',
+    title: 'Apex Legends',
+    genre: 'Battle Royale',
+    badge: '🎯 Arena Shooter',
+    coverUrl: steamCover(1172470),
+    gradient: 'linear-gradient(135deg, #e11d48, #4c0519)',
+  },
+  {
+    id: 'rust',
+    source: 'steam',
+    appId: 252490,
+    ticker: 'RUST',
+    title: 'Rust',
+    genre: 'Survival',
+    badge: '🪓 High Volatility',
+    coverUrl: steamCover(252490),
+    gradient: 'linear-gradient(135deg, #ea580c, #431407)',
+  },
+  {
+    id: 'hd2',
+    source: 'steam',
+    appId: 553850,
+    ticker: 'HD2',
+    title: 'Helldivers 2',
+    genre: 'Co-op Shooter',
+    badge: '🚀 Co-op Action',
+    coverUrl: steamCover(553850),
+    gradient: 'linear-gradient(135deg, #eab308, #1e293b)',
+  },
+  {
+    id: 'elden',
+    source: 'steam',
+    appId: 1245620,
+    ticker: 'ELDN',
+    title: 'Elden Ring',
+    genre: 'Action RPG',
+    badge: '⚔️ Action RPG',
+    coverUrl: steamCover(1245620),
+    gradient: 'linear-gradient(135deg, #059669, #064e3b)',
+  },
+  {
+    id: 'balatro',
+    source: 'steam',
+    appId: 2379780,
+    ticker: 'BLTR',
+    title: 'Balatro',
+    genre: 'Indie Roguelike',
+    badge: '🃏 Indie Hit',
+    coverUrl: steamCover(2379780),
+    gradient: 'linear-gradient(135deg, #dc2626, #312e81)',
+  },
+  {
+    id: 'gtav',
+    source: 'steam',
+    appId: 271590,
+    ticker: 'GTAV',
+    title: 'Grand Theft Auto V',
+    genre: 'Open World',
+    badge: '🚔 Crime Classic',
+    coverUrl: steamCover(271590),
+    gradient: 'linear-gradient(135deg, #15803d, #14532d)',
+  },
+  {
+    id: 'cod',
+    source: 'steam',
+    appId: 1938090,
+    ticker: 'COD',
+    title: 'Call of Duty',
+    genre: 'FPS / Warzone',
+    badge: '🎖️ AAA Shooter',
+    coverUrl: steamCover(1938090),
+    gradient: 'linear-gradient(135deg, #4d7c0f, #1a2e05)',
+  },
+  {
+    id: 'tf2',
+    source: 'steam',
+    appId: 440,
+    ticker: 'TF2',
+    title: 'Team Fortress 2',
+    genre: 'Class Shooter',
+    badge: '🎩 Valve Legend',
+    coverUrl: steamCover(440),
+    gradient: 'linear-gradient(135deg, #b45309, #451a03)',
+  },
+  {
+    id: 'dbd',
+    source: 'steam',
+    appId: 381210,
+    ticker: 'DBD',
+    title: 'Dead by Daylight',
+    genre: 'Asymmetric Horror',
+    badge: '🪝 Horror Hit',
+    coverUrl: steamCover(381210),
+    gradient: 'linear-gradient(135deg, #991b1b, #1f2937)',
+  },
+  {
+    id: 'warframe',
+    source: 'steam',
+    appId: 230410,
+    ticker: 'WRFM',
+    title: 'Warframe',
+    genre: 'Sci-Fi Looter',
+    badge: '🥷 Space Ninja',
+    coverUrl: steamCover(230410),
+    gradient: 'linear-gradient(135deg, #0284c7, #0f172a)',
+  },
+  {
+    id: 'bg3',
+    source: 'steam',
+    appId: 1086940,
+    ticker: 'BG3',
+    title: "Baldur's Gate 3",
+    genre: 'CRPG',
+    badge: '🐉 GOTY Winner',
+    coverUrl: steamCover(1086940),
+    gradient: 'linear-gradient(135deg, #7e22ce, #1e1b4b)',
+  },
+  {
+    id: 'bloxfruits',
+    source: 'roblox',
+    universeId: 994732206,
+    ticker: 'BLOX',
+    title: 'Blox Fruits (Roblox)',
+    genre: 'Anime Action RPG',
+    badge: '🏴‍☠️ Roblox Mega-Hit',
+    coverUrl: '',
+    gradient: 'linear-gradient(135deg, #2563eb, #0f172a)',
+  },
+  {
+    id: 'brookhaven',
+    source: 'roblox',
+    universeId: 1686885941,
+    ticker: 'BRKH',
+    title: 'Brookhaven RP (Roblox)',
+    genre: 'Social Roleplay',
+    badge: '🏡 Roblox #1 RP',
+    coverUrl: '',
+    gradient: 'linear-gradient(135deg, #0d9488, #134e4a)',
+  },
+];
+
+const calcPrice = (players) => Number(Math.max(0.5, players / 1000).toFixed(2));
+
+function InteractiveRealChart({ realHistory, avgBuyPrice, livePrice }) {
+  const [selectedIndex, setSelectedIndex] = useState(null);
+  const [chartMode, setChartMode] = useState('price');
+
+  if (!realHistory || realHistory.length === 0) {
+    return (
+      <div
+        style={{
+          height: '230px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#8b949e',
+        }}
+      >
+        Waiting for 24/7 cloud collector to record first tick...
+      </div>
+    );
   }
 
-  .nav-tabs {
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 6px;
+  const recent24h = realHistory.slice(-288);
+  const series =
+    recent24h.length === 1
+      ? [
+          { ...recent24h[0], timeLabel: `${recent24h[0].timeLabel} (Start)` },
+          { ...recent24h[0], timeLabel: `${recent24h[0].timeLabel} (Latest)` },
+        ]
+      : recent24h;
+
+  const width = 700;
+  const height = 220;
+  const padLeft = 14;
+  const padRight = 62;
+  const padTop = 22;
+  const padBottom = 26;
+  const chartW = width - padLeft - padRight;
+  const chartH = height - padTop - padBottom;
+
+  const primaryValues = series.map((d, idx) => {
+    if (chartMode === 'price') {
+      if (idx === series.length - 1 && livePrice > 0) return livePrice;
+      return calcPrice(d.fairPlayers ?? d.rollingAvg ?? d.players);
+    }
+    return d.players;
+  });
+
+  const yesterdayValues =
+    chartMode === 'compare'
+      ? series.map((d) => (typeof d.yesterdayPlayers === 'number' ? d.yesterdayPlayers : null))
+      : [];
+
+  const validYesterday = yesterdayValues.filter((v) => v !== null);
+  const allValsForScale =
+    chartMode === 'compare' && validYesterday.length > 0
+      ? [...primaryValues, ...validYesterday]
+      : primaryValues;
+
+  const avgPrimary =
+    primaryValues.reduce((a, b) => a + b, 0) / (primaryValues.length || 1);
+
+  const rawMin = Math.min(...allValsForScale, avgPrimary);
+  const rawMax = Math.max(...allValsForScale, avgPrimary);
+  const spread = rawMax - rawMin || Math.max(0.5, rawMax * 0.005);
+  const minVal = rawMin - spread * 0.22;
+  const maxVal = rawMax + spread * 0.22;
+  const range = maxVal - minVal || 1;
+
+  const getX = (idx) => padLeft + (idx / (series.length - 1)) * chartW;
+  const getY = (val) => padTop + chartH - ((val - minVal) / range) * chartH;
+
+  const coords = series.map((d, i) => ({
+    x: getX(i),
+    y: getY(primaryValues[i]),
+    val: primaryValues[i],
+    yestVal: yesterdayValues[i] ?? null,
+    livePlayers: d.players,
+    price:
+      i === series.length - 1 && livePrice > 0
+        ? livePrice
+        : calcPrice(d.fairPlayers ?? d.rollingAvg ?? d.players),
+    timeLabel: d.timeLabel,
+  }));
+
+  const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
+  const areaPath = `${linePath} L ${coords[coords.length - 1].x} ${padTop + chartH} L ${
+    coords[0].x
+  } ${padTop + chartH} Z`;
+
+  let yesterdayPath = '';
+  if (chartMode === 'compare') {
+    let penDown = false;
+    coords.forEach((c) => {
+      if (c.yestVal !== null) {
+        const yY = getY(c.yestVal);
+        yesterdayPath += `${penDown ? 'L' : 'M'} ${c.x} ${yY} `;
+        penDown = true;
+      } else {
+        penDown = false;
+      }
+    });
   }
 
-  .wallet-stats {
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
+  const activeIdx =
+    selectedIndex !== null && selectedIndex < coords.length ? selectedIndex : coords.length - 1;
+  const activePt = coords[activeIdx];
 
-  .controls-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
+  const isPositive =
+    chartMode === 'compare' && activePt.yestVal
+      ? activePt.val >= activePt.yestVal
+      : activePt.val >= coords[0].val;
 
-  .game-grid {
-    grid-template-columns: 1fr;
-  }
+  const strokeColor = isPositive ? '#3fb950' : '#f85149';
 
-  .trade-panel {
-    grid-template-columns: 1fr;
-  }
+  const buyY =
+    chartMode === 'price' && avgBuyPrice && avgBuyPrice >= minVal && avgBuyPrice <= maxVal
+      ? getY(avgBuyPrice)
+      : null;
 
-  .holding-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
+  const formatAxis = (v) =>
+    chartMode === 'price' ? `$${v.toFixed(2)}` : `${(v / 1000).toFixed(0)}k`;
 
-  .holding-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '10px',
+          marginBottom: '12px',
+        }}
+      >
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {[
+            { id: 'price', label: '📈 Stock Price' },
+            { id: 'compare', label: '⚔️ Today vs. Yesterday' },
+            { id: 'live', label: '👥 Live Players' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setChartMode(tab.id);
+                setSelectedIndex(null);
+              }}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: chartMode === tab.id ? '1px solid #58a6ff' : '1px solid #30363d',
+                background: chartMode === tab.id ? '#1f2937' : '#0d1117',
+                color: chartMode === tab.id ? '#58a6ff' : '#8b949e',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-  .modal-box {
-    width: 95%;
-    max-height: 92vh;
-    overflow-y: auto;
-    padding: 16px;
-  }
+        <div style={{ fontSize: '0.8rem', color: '#8b949e' }}>
+          {selectedIndex !== null ? `📌 ${activePt.timeLabel}` : `🟢 Latest (${activePt.timeLabel})`}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', flexWrap: 'wrap', marginBottom: '8px' }}>
+        {chartMode === 'price' && (
+          <>
+            <span style={{ fontSize: '1.45rem', fontWeight: 800, color: '#f0f6fc' }}>
+              ${activePt.price.toFixed(2)}
+            </span>
+            <span style={{ fontSize: '0.9rem', color: '#8b949e' }}>
+              👥 {activePt.livePlayers.toLocaleString()} live players
+            </span>
+          </>
+        )}
+
+        {chartMode === 'compare' && (
+          <>
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f0f6fc' }}>
+              Today: {activePt.livePlayers.toLocaleString()}
+            </span>
+            {activePt.yestVal ? (
+              <span style={{ fontSize: '0.95rem', color: isPositive ? '#3fb950' : '#f85149', fontWeight: 700 }}>
+                vs. Yesterday: {activePt.yestVal.toLocaleString()} (
+                {(((activePt.livePlayers - activePt.yestVal) / activePt.yestVal) * 100).toFixed(1)}%)
+              </span>
+            ) : (
+              <span style={{ fontSize: '0.85rem', color: '#d29922' }}>
+                Collecting 24h baseline for yesterday's dotted line...
+              </span>
+            )}
+          </>
+        )}
+
+        {chartMode === 'live' && (
+          <span style={{ fontSize: '1.35rem', fontWeight: 800, color: '#f0f6fc' }}>
+            👥 {activePt.livePlayers.toLocaleString()} live concurrent players
+          </span>
+        )}
+      </div>
+
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        style={{ width: '100%', height: '220px', cursor: 'crosshair', userSelect: 'none' }}
+        onMouseLeave={() => setSelectedIndex(null)}
+      >
+        <defs>
+          <linearGradient id="realAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+
+        {[0, 0.5, 1].map((ratio, idx) => {
+          const gy = padTop + chartH * ratio;
+          const valAtLine = maxVal - range * ratio;
+          return (
+            <g key={idx}>
+              <line x1={padLeft} y1={gy} x2={width - padRight} y2={gy} stroke="#21262d" strokeWidth="1" />
+              <text x={width - padRight + 6} y={gy + 4} fill="#6e7681" fontSize="10">
+                {formatAxis(valAtLine)}
+              </text>
+            </g>
+          );
+        })}
+
+        {buyY !== null && (
+          <>
+            <line
+              x1={padLeft}
+              y1={buyY}
+              x2={width - padRight}
+              y2={buyY}
+              stroke="#58a6ff"
+              strokeWidth="1.5"
+              strokeDasharray="3,3"
+            />
+            <text x={padLeft + 4} y={buyY - 5} fill="#58a6ff" fontSize="10" fontWeight="700">
+              Your Avg Buy (${avgBuyPrice.toFixed(2)})
+            </text>
+          </>
+        )}
+
+        {chartMode === 'compare' && yesterdayPath && (
+          <path
+            d={yesterdayPath}
+            fill="none"
+            stroke="#8b949e"
+            strokeWidth="2"
+            strokeDasharray="5,5"
+          />
+        )}
+
+        <path d={areaPath} fill="url(#realAreaGrad)" />
+        <path
+          d={linePath}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        <circle
+          cx={activePt.x}
+          cy={activePt.y}
+          r="5.5"
+          fill={strokeColor}
+          stroke="#0d1117"
+          strokeWidth="2"
+        />
+
+        <line
+          x1={activePt.x}
+          y1={padTop}
+          x2={activePt.x}
+          y2={padTop + chartH}
+          stroke="#8b949e"
+          strokeWidth="1"
+          strokeDasharray="3,3"
+        />
+
+        {coords.map((c, idx) => {
+          const colWidth = chartW / coords.length;
+          return (
+            <rect
+              key={idx}
+              x={c.x - colWidth / 2}
+              y={padTop}
+              width={colWidth}
+              height={chartH}
+              fill="transparent"
+              onMouseEnter={() => setSelectedIndex(idx)}
+              onClick={() => setSelectedIndex(idx)}
+            />
+          );
+        })}
+      </svg>
+
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: '0.78rem',
+          color: '#8b949e',
+          marginTop: '4px',
+        }}
+      >
+        <span>{series[0]?.timeLabel}</span>
+        <span>
+          {chartMode === 'compare'
+            ? 'Solid = Today • Dotted = Same Time Yesterday'
+            : 'Hover or click any point to inspect'}
+        </span>
+        <span>{series[series.length - 1]?.timeLabel}</span>
+      </div>
+    </div>
+  );
+}
+
+function HowItWorksModal({ onClose }) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal-box"
+        style={{ maxWidth: '480px', padding: '26px' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '14px',
+          }}
+        >
+          <h2>How GameStox Works</h2>
+          <button className="close-btn" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#c9d1d9', fontSize: '0.93rem', lineHeight: 1.5 }}>
+          <p>
+            <strong>1. Powered by Real Players:</strong> Every 5 minutes, our 24/7 cloud collector pulls live player counts from Steam, Epic Games, Roblox, and Hypixel.
+          </p>
+          <p>
+            <strong>2. Now vs. Yesterday Pricing:</strong> Instead of letting people cheat by buying at 3 AM and selling at 7 PM, prices compare <strong>right now</strong> against the <strong>exact same time yesterday</strong>. If a game beats yesterday's pace (new update, weekend surge, viral stream), its stock jumps immediately.
+          </p>
+          <p>
+            <strong>3. Compete with Friends:</strong> Everyone starts with <strong>$10,000</strong> in virtual cash. Add friends by their Trader Name to track their portfolios and climb the Global Leaderboard.
+          </p>
+          <p style={{ fontSize: '0.82rem', color: '#8b949e', borderTop: '1px solid #21262d', paddingTop: '10px' }}>
+            🚧 <strong>Beta Notice:</strong> GameStox is currently in Beta. Wallets and leaderboards may be reset before v1.0.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AuthModal({ onClose }) {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    setError('');
+    setSubmitting(true);
+    try {
+      await signInWithPopup(auth, googleProvider);
+      onClose();
+    } catch (err) {
+      setError(err.message.replace('Firebase: ', ''));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+    try {
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      onClose();
+    } catch (err) {
+      setError(err.message.replace('Firebase: ', ''));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal-box"
+        style={{ maxWidth: '420px', padding: '28px' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+          }}
+        >
+          <h2>{isSignUp ? 'Create GameStox Account' : 'Sign In to Trade'}</h2>
+          <button className="close-btn" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <p style={{ color: '#8b949e', fontSize: '0.9rem', marginBottom: '18px' }}>
+          New accounts start with <strong>$10,000.00</strong> in cloud-saved trading cash.
+        </p>
+
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          disabled={submitting}
+          style={{
+            width: '100%',
+            padding: '12px',
+            borderRadius: '8px',
+            border: '1px solid #30363d',
+            background: '#f0f6fc',
+            color: '#0d1117',
+            fontWeight: 700,
+            fontSize: '0.95rem',
+            cursor: 'pointer',
+            marginBottom: '16px',
+          }}
+        >
+          Continue with Google
+        </button>
+
+        <div
+          style={{
+            textAlign: 'center',
+            color: '#8b949e',
+            fontSize: '0.8rem',
+            marginBottom: '16px',
+          }}
+        >
+          OR WITH EMAIL
+        </div>
+
+        <form onSubmit={handleEmailSubmit}>
+          <input
+            type="email"
+            placeholder="Email address"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="amount-input"
+            style={{ marginBottom: '10px' }}
+          />
+          <input
+            type="password"
+            placeholder="Password (min 6 characters)"
+            required
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="amount-input"
+            style={{ marginBottom: '14px' }}
+          />
+
+          {error && (
+            <div style={{ color: '#f85149', fontSize: '0.85rem', marginBottom: '12px' }}>
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="action-btn buy-btn"
+            style={{ width: '100%' }}
+          >
+            {submitting ? 'Please wait...' : isSignUp ? 'Create Account ($10k)' : 'Sign In'}
+          </button>
+        </form>
+
+        <div style={{ textAlign: 'center', marginTop: '14px', fontSize: '0.88rem', color: '#8b949e' }}>
+          {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+          <button
+            type="button"
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError('');
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#58a6ff',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            {isSignUp ? 'Sign In' : 'Sign Up'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const [historyMap, setHistoryMap] = useState({});
+  const [cash, setCash] = useState(10000);
+  const [portfolio, setPortfolio] = useState({});
+  const [displayName, setDisplayName] = useState('');
+  const [friendIds, setFriendIds] = useState([]);
+  const [friendsData, setFriendsData] = useState({});
+  const [allUsers, setAllUsers] = useState([]);
+
+  const [friendSearch, setFriendSearch] = useState('');
+  const [friendMsg, setFriendMsg] = useState('');
+  const [newNameInput, setNewNameInput] = useState('');
+  const [nameMsg, setNameMsg] = useState('');
+
+  const [activeTab, setActiveTab] = useState('market');
+  const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('default');
+  const [selectedGameId, setSelectedGameId] = useState(null);
+  const [tradeAmount, setTradeAmount] = useState('500');
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  const showToast = (message, type = 'buy') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((prev) => (prev?.message === message ? null : prev));
+    }, 3000);
+  };
+
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthReady(true);
+    });
+    return () => unsubAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!authReady) return;
+
+    if (!user) {
+      setCash(10000);
+      setPortfolio({});
+      setDisplayName('');
+      setFriendIds([]);
+      setFriendsData({});
+      setAllUsers([]);
+      return;
+    }
+
+    const userDocRef = doc(db, 'users', user.uid);
+    let unsubUser = () => {};
+
+    const initAndSubscribeUser = async () => {
+      try {
+        const snap = await getDoc(userDocRef);
+        const defaultName = user.displayName || user.email?.split('@')[0] || 'Trader';
+
+        if (!snap.exists()) {
+          await setDoc(userDocRef, {
+            displayName: defaultName,
+            nameLower: defaultName.toLowerCase(),
+            cash: 10000,
+            portfolio: {},
+            friends: [],
+            createdAt: Date.now(),
+          });
+        } else if (!snap.data().nameLower) {
+          const existingName = snap.data().displayName || defaultName;
+          await setDoc(
+            userDocRef,
+            { displayName: existingName, nameLower: existingName.toLowerCase() },
+            { merge: true }
+          );
+        }
+
+        unsubUser = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            const currentName = data.displayName || defaultName;
+            setCash(typeof data.cash === 'number' ? data.cash : 10000);
+            setPortfolio(data.portfolio || {});
+            setDisplayName(currentName);
+            setNewNameInput((prev) => (prev === '' ? currentName : prev));
+            setFriendIds(Array.isArray(data.friends) ? data.friends : []);
+          }
+        });
+      } catch (err) {
+        console.error('Failed loading user portfolio:', err);
+      }
+    };
+
+    initAndSubscribeUser();
+    return () => unsubUser();
+  }, [user, authReady]);
+
+  useEffect(() => {
+    if (!user || friendIds.length === 0) {
+      setFriendsData({});
+      return;
+    }
+
+    const unsubs = friendIds.map((fUid) =>
+      onSnapshot(doc(db, 'users', fUid), (docSnap) => {
+        if (docSnap.exists()) {
+          setFriendsData((prev) => ({
+            ...prev,
+            [fUid]: { uid: fUid, ...docSnap.data() },
+          }));
+        }
+      })
+    );
+
+    return () => unsubs.forEach((unsub) => unsub());
+  }, [user, friendIds.join(',')]);
+
+  useEffect(() => {
+    if (!user || activeTab !== 'leaderboard') return;
+
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const list = [];
+      snapshot.forEach((docSnap) => {
+        list.push({ uid: docSnap.id, ...docSnap.data() });
+      });
+      setAllUsers(list);
+    });
+
+    return () => unsubscribe();
+  }, [user, activeTab]);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'market'), (snapshot) => {
+      const nextMap = {};
+      let latestTimestamp = 0;
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (Array.isArray(data.history)) {
+          nextMap[docSnap.id] = data.history;
+        }
+        if (data.updatedAt && data.updatedAt > latestTimestamp) {
+          latestTimestamp = data.updatedAt;
+        }
+      });
+
+      setHistoryMap(nextMap);
+      if (latestTimestamp > 0) {
+        setLastUpdated(new Date(latestTimestamp).toLocaleTimeString());
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const enrichedGames = INITIAL_GAMES.map((g) => {
+    const playersHistory = historyMap[g.id] || [];
+    const len = playersHistory.length;
+    const latestEntry = len > 0 ? playersHistory[len - 1] : null;
+    const recent24h = playersHistory.slice(-288);
+    const openEntry = recent24h.length > 0 ? recent24h[0] : latestEntry;
+
+    const currentPlayers = latestEntry ? latestEntry.players : 0;
+    const yesterdayPlayers = latestEntry?.yesterdayPlayers ?? null;
+    const basePlayers = latestEntry
+      ? latestEntry.fairPlayers ?? latestEntry.rollingAvg ?? latestEntry.players
+      : 0;
+    const openBasePlayers = openEntry
+      ? openEntry.fairPlayers ?? openEntry.rollingAvg ?? openEntry.players
+      : basePlayers;
+
+    const price = basePlayers > 0 ? calcPrice(basePlayers) : 0;
+    const openPrice = openBasePlayers > 0 ? calcPrice(openBasePlayers) : price;
+
+    let changePct = 0;
+    if (yesterdayPlayers && yesterdayPlayers > 0 && currentPlayers > 0) {
+      changePct = Number(
+        (((currentPlayers - yesterdayPlayers) / yesterdayPlayers) * 100).toFixed(2)
+      );
+    } else if (openPrice > 0) {
+      changePct = Number((((price - openPrice) / openPrice) * 100).toFixed(2));
+    }
+
+    return { ...g, playersHistory, currentPlayers, yesterdayPlayers, price, changePct };
+  });
+
+  const holdingsList = Object.entries(portfolio)
+    .filter(([, data]) => data.shares > 0.0001)
+    .map(([gameId, data]) => {
+      const game = enrichedGames.find((g) => g.id === gameId);
+      const currentPrice = game?.price || 0;
+      const currentValue = data.shares * currentPrice;
+      const profit = currentValue - data.totalCost;
+      const profitPct = data.totalCost > 0 ? (profit / data.totalCost) * 100 : 0;
+      const avgBuyPrice = data.totalCost / data.shares;
+      return {
+        ...game,
+        shares: data.shares,
+        totalCost: data.totalCost,
+        avgBuyPrice,
+        currentValue,
+        profit,
+        profitPct,
+      };
+    });
+
+  const investedValue = holdingsList.reduce((sum, h) => sum + h.currentValue, 0);
+  const totalCostBasis = holdingsList.reduce((sum, h) => sum + h.totalCost, 0);
+  const totalNetWorth = cash + investedValue;
+  const totalProfit = investedValue - totalCostBasis;
+
+  const enrichedFriends = friendIds
+    .map((fUid) => friendsData[fUid])
+    .filter(Boolean)
+    .map((f) => {
+      const fCash = typeof f.cash === 'number' ? f.cash : 0;
+      const fHoldings = Object.entries(f.portfolio || {})
+        .filter(([, data]) => data.shares > 0.0001)
+        .map(([gameId, data]) => {
+          const game = enrichedGames.find((g) => g.id === gameId);
+          const currentPrice = game?.price || 0;
+          const currentValue = data.shares * currentPrice;
+          const profit = currentValue - data.totalCost;
+          return {
+            id: gameId,
+            ticker: game?.ticker || gameId.toUpperCase(),
+            title: game?.title || gameId,
+            shares: data.shares,
+            currentValue,
+            profit,
+          };
+        })
+        .sort((a, b) => b.currentValue - a.currentValue);
+
+      const fInvested = fHoldings.reduce((sum, h) => sum + h.currentValue, 0);
+      return {
+        uid: f.uid,
+        name: f.displayName || 'Trader',
+        cash: fCash,
+        investedValue: fInvested,
+        netWorth: fCash + fInvested,
+        holdings: fHoldings,
+      };
+    })
+    .sort((a, b) => b.netWorth - a.netWorth);
+
+  const leaderboardList = allUsers
+    .map((u) => {
+      const uCash = typeof u.cash === 'number' ? u.cash : 10000;
+      let uInvested = 0;
+      let topGame = null;
+      let topVal = 0;
+
+      Object.entries(u.portfolio || {}).forEach(([gameId, data]) => {
+        if (data.shares > 0.0001) {
+          const game = enrichedGames.find((g) => g.id === gameId);
+          const val = data.shares * (game?.price || 0);
+          uInvested += val;
+          if (val > topVal) {
+            topVal = val;
+            topGame = game?.ticker || gameId.toUpperCase();
+          }
+        }
+      });
+
+      const netWorth = uCash + uInvested;
+      const returnPct = ((netWorth - 10000) / 10000) * 100;
+
+      return {
+        uid: u.uid,
+        name: u.displayName || 'Trader',
+        cash: uCash,
+        investedValue: uInvested,
+        netWorth,
+        returnPct,
+        topGame,
+      };
+    })
+    .sort((a, b) => b.netWorth - a.netWorth);
+
+  const selectedGame = enrichedGames.find((g) => g.id === selectedGameId);
+  const selectedHolding = selectedGameId ? portfolio[selectedGameId] : null;
+  const selectedAvgBuy =
+    selectedHolding && selectedHolding.shares > 0
+      ? selectedHolding.totalCost / selectedHolding.shares
+      : null;
+
+  const saveUserState = async (nextCash, nextPortfolio) => {
+    if (!user) return;
+    const userDocRef = doc(db, 'users', user.uid);
+    await updateDoc(userDocRef, {
+      cash: nextCash,
+      portfolio: nextPortfolio,
+      updatedAt: Date.now(),
+    });
+  };
+
+  const handleSaveName = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    const clean = newNameInput.trim();
+    if (clean.length < 2 || clean.length > 20) {
+      setNameMsg('Name must be 2–20 characters.');
+      return;
+    }
+
+    setNameMsg('Saving...');
+    try {
+      const q = query(collection(db, 'users'), where('nameLower', '==', clean.toLowerCase()));
+      const snap = await getDocs(q);
+      const takenByOther = snap.docs.some((d) => d.id !== user.uid);
+      if (takenByOther) {
+        setNameMsg('That Trader Name is already taken.');
+        return;
+      }
+
+      await setDoc(
+        doc(db, 'users', user.uid),
+        { displayName: clean, nameLower: clean.toLowerCase(), updatedAt: Date.now() },
+        { merge: true }
+      );
+      setNameMsg('Saved! Friends can now search you by this name.');
+    } catch (err) {
+      setNameMsg(`Error: ${err.message}`);
+    }
+  };
+
+  const handleAddFriend = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    const target = friendSearch.trim().toLowerCase();
+    if (!target) return;
+
+    setFriendMsg('Searching...');
+    try {
+      const q = query(collection(db, 'users'), where('nameLower', '==', target));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        setFriendMsg('No trader found with that exact name. Ask them to check their Trader Name!');
+        return;
+      }
+
+      const found = snap.docs[0];
+      if (found.id === user.uid) {
+        setFriendMsg("That's you!");
+        return;
+      }
+      if (friendIds.includes(found.id)) {
+        setFriendMsg(`${found.data().displayName} is already in your friends list.`);
+        return;
+      }
+
+      await setDoc(
+        doc(db, 'users', user.uid),
+        { friends: arrayUnion(found.id) },
+        { merge: true }
+      );
+      setFriendSearch('');
+      setFriendMsg(`Added ${found.data().displayName}!`);
+    } catch (err) {
+      setFriendMsg(`Failed to add friend: ${err.message}`);
+    }
+  };
+
+  const handleRemoveFriend = async (fUid) => {
+    if (!user) return;
+    await setDoc(
+      doc(db, 'users', user.uid),
+      { friends: arrayRemove(fUid) },
+      { merge: true }
+    );
+  };
+
+  const handleBuy = async (game, dollarAmt) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    const amount = Number(dollarAmt);
+    if (!amount || amount <= 0 || amount > cash || game.price <= 0) return;
+    const sharesBought = amount / game.price;
+
+    const nextCash = Number((cash - amount).toFixed(2));
+    const existing = portfolio[game.id] || { shares: 0, totalCost: 0 };
+    const nextPortfolio = {
+      ...portfolio,
+      [game.id]: {
+        shares: existing.shares + sharesBought,
+        totalCost: existing.totalCost + amount,
+      },
+    };
+
+    setCash(nextCash);
+    setPortfolio(nextPortfolio);
+    await saveUserState(nextCash, nextPortfolio);
+    showToast(`Bought ${sharesBought.toFixed(3)} ${game.ticker} for $${amount.toFixed(2)}`, 'buy');
+  };
+
+  const handleSell = async (game, dollarAmt) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    const existing = portfolio[game.id];
+    if (!existing || existing.shares <= 0 || game.price <= 0) return;
+
+    const maxDollarValue = existing.shares * game.price;
+    const sellDollars = Math.min(Number(dollarAmt), maxDollarValue);
+    if (!sellDollars || sellDollars <= 0) return;
+
+    const sharesSold = sellDollars / game.price;
+    const fractionSold = sharesSold / existing.shares;
+    const costRemoved = existing.totalCost * fractionSold;
+
+    const nextCash = Number((cash + sellDollars).toFixed(2));
+    const remainingShares = existing.shares - sharesSold;
+    const nextPortfolio = { ...portfolio };
+
+    if (remainingShares < 0.0001) {
+      delete nextPortfolio[game.id];
+    } else {
+      nextPortfolio[game.id] = {
+        shares: remainingShares,
+        totalCost: existing.totalCost - costRemoved,
+      };
+    }
+
+    setCash(nextCash);
+    setPortfolio(nextPortfolio);
+    await saveUserState(nextCash, nextPortfolio);
+    showToast(`Sold ${sharesSold.toFixed(3)} ${game.ticker} for $${sellDollars.toFixed(2)}`, 'sell');
+  };
+
+  const resetAccount = async () => {
+    if (!user) return;
+    if (!window.confirm('Reset your cash back to $10,000 and clear all shares?')) return;
+    setCash(10000);
+    setPortfolio({});
+    await saveUserState(10000, {});
+    showToast('Wallet reset to $10,000.00', 'buy');
+  };
+
+  const filteredGames = enrichedGames
+    .filter((g) => {
+      if (filter === 'gainers' && g.changePct <= 0) return false;
+      if (filter === 'popular' && g.currentPlayers < 100000) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        return (
+          g.title.toLowerCase().includes(q) ||
+          g.ticker.toLowerCase().includes(q) ||
+          g.genre.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'players') return b.currentPlayers - a.currentPlayers;
+      if (sortBy === 'gainers') return b.changePct - a.changePct;
+      if (sortBy === 'price') return b.price - a.price;
+      return 0;
+    });
+
+  return (
+    <div>
+      <div className="ticker-bar">
+        <span>🟢 24/7 CLOUD MARKET {lastUpdated ? `(Last Sync: ${lastUpdated})` : ''}:</span>
+        {enrichedGames.map((g) => (
+          <span key={g.id}>
+            <strong>{g.ticker}</strong>{' '}
+            {g.price > 0 ? `$${g.price.toFixed(2)}` : 'Waiting...'}{' '}
+            {g.price > 0 && (
+              <span style={{ color: g.changePct >= 0 ? '#3fb950' : '#f85149' }}>
+                ({g.changePct >= 0 ? '+' : ''}
+                {g.changePct}%)
+              </span>
+            )}
+          </span>
+        ))}
+      </div>
+
+      <nav className="navbar">
+        <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>🎮 GameStox</span>
+          <span
+            style={{
+              fontSize: '0.68rem',
+              fontWeight: 800,
+              background: '#1f6feb',
+              color: '#ffffff',
+              padding: '2px 7px',
+              borderRadius: '999px',
+              letterSpacing: '0.05em',
+            }}
+          >
+            BETA
+          </span>
+          <button
+            onClick={() => setShowHelpModal(true)}
+            title="How Prices Work"
+            style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              border: '1px solid #30363d',
+              background: '#161b22',
+              color: '#8b949e',
+              fontWeight: 800,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+            }}
+          >
+            ?
+          </button>
+        </div>
+
+        <div className="nav-tabs">
+          <button
+            className={`tab-btn ${activeTab === 'market' ? 'active' : ''}`}
+            onClick={() => setActiveTab('market')}
+          >
+            Market
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'shares' ? 'active' : ''}`}
+            onClick={() => setActiveTab('shares')}
+          >
+            My Shares ({holdingsList.length})
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'friends' ? 'active' : ''}`}
+            onClick={() => setActiveTab('friends')}
+          >
+            👥 Friends ({friendIds.length})
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('leaderboard')}
+          >
+            🏆 Leaderboard
+          </button>
+        </div>
+
+        <div className="wallet-stats">
+          {user ? (
+            <>
+              <div className="stat-pill">
+                <div className="stat-label">Available Cash</div>
+                <div className="stat-value">
+                  $
+                  {cash.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              </div>
+              <div className="stat-pill">
+                <div className="stat-label">Net Worth</div>
+                <div className="stat-value" style={{ color: '#58a6ff' }}>
+                  $
+                  {totalNetWorth.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              </div>
+              <div className="stat-pill" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div>
+                  <div className="stat-label">Trader</div>
+                  <div className="stat-value" style={{ fontSize: '0.88rem', color: '#f0f6fc' }}>
+                    {displayName || user.email?.split('@')[0]}
+                  </div>
+                </div>
+                <button
+                  className="small-btn"
+                  style={{ background: '#21262d', color: '#c9d1d9', padding: '6px 10px' }}
+                  onClick={() => signOut(auth)}
+                >
+                  Log Out
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              className="sim-btn"
+              style={{ padding: '10px 18px', fontWeight: 700 }}
+              onClick={() => setShowAuthModal(true)}
+            >
+              Sign In / Start with $10k
+            </button>
+          )}
+        </div>
+      </nav>
+
+      <div className="container">
+        {activeTab === 'market' ? (
+          <>
+            <div className="controls-row">
+              <h2>24/7 Live Game Stocks {isLoading ? '(Syncing...)' : ''}</h2>
+              <div className="filter-pills">
+                <button
+                  className={`pill ${filter === 'all' ? 'active' : ''}`}
+                  onClick={() => setFilter('all')}
+                >
+                  All ({enrichedGames.length})
+                </button>
+                <button
+                  className={`pill ${filter === 'gainers' ? 'active' : ''}`}
+                  onClick={() => setFilter('gainers')}
+                >
+                  🔥 Rising
+                </button>
+                <button
+                  className={`pill ${filter === 'popular' ? 'active' : ''}`}
+                  onClick={() => setFilter('popular')}
+                >
+                  👑 100K+
+                </button>
+              </div>
+            </div>
+
+            <div className="search-sort-row">
+              <input
+                type="text"
+                className="amount-input"
+                placeholder="🔍 Search game, ticker, or genre..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ marginBottom: 0, flex: 1, minWidth: '200px' }}
+              />
+              <select
+                className="amount-input"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                style={{ marginBottom: 0, width: 'auto', minWidth: '175px', cursor: 'pointer' }}
+              >
+                <option value="default">Sort: Featured</option>
+                <option value="players">Sort: Most Players</option>
+                <option value="gainers">Sort: Top Gainers (%)</option>
+                <option value="price">Sort: Highest Price</option>
+              </select>
+            </div>
+
+            <div className="game-grid">
+              {filteredGames.map((game) => {
+                const owned = portfolio[game.id];
+                return (
+                  <div
+                    key={game.id}
+                    className="game-card"
+                    onClick={() => {
+                      setSelectedGameId(game.id);
+                      setTradeAmount('500');
+                    }}
+                  >
+                    <div
+                      className="card-banner"
+                      style={{
+                        backgroundImage: game.coverUrl
+                          ? `url(${game.coverUrl}), ${game.gradient}`
+                          : game.gradient,
+                      }}
+                    >
+                      <span className="badge">{game.badge}</span>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f0f6fc' }}>
+                        {game.genre}
+                      </span>
+                    </div>
+
+                    <div className="card-body">
+                      <div className="card-title-row">
+                        <div>
+                          <div className="game-title">{game.title}</div>
+                          <div className="ticker-tag">{game.ticker} • LIVE MARKET</div>
+                        </div>
+                        <div className="price-block">
+                          <div className="share-price">
+                            {game.price > 0 ? `$${game.price.toFixed(2)}` : '...'}
+                          </div>
+                          {game.price > 0 && (
+                            <span className={`pct-badge ${game.changePct >= 0 ? 'up' : 'down'}`}>
+                              {game.changePct >= 0 ? '▲' : '▼'} {Math.abs(game.changePct)}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="card-footer">
+                        <span>
+                          👥 {game.currentPlayers > 0 ? game.currentPlayers.toLocaleString() : '---'} live
+                        </span>
+                        {owned ? (
+                          <span style={{ color: '#58a6ff', fontWeight: 700 }}>
+                            Owned: {owned.shares.toFixed(2)} sh
+                          </span>
+                        ) : (
+                          <span>Click to trade →</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : activeTab === 'shares' ? (
+          !user ? (
+            <div className="summary-card" style={{ textAlign: 'center', padding: '50px 20px' }}>
+              <h2 style={{ marginBottom: '10px' }}>Sign In to View Your Portfolio</h2>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+                Create an account to claim $10,000 in virtual trading cash and track your shares across devices.
+              </p>
+              <button className="sim-btn" onClick={() => setShowAuthModal(true)}>
+                Sign In / Create Account
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="controls-row">
+                <h2>My Shares & Live Profit</h2>
+                <button
+                  className="small-btn"
+                  style={{ background: 'var(--bg-card)', color: '#8b949e' }}
+                  onClick={resetAccount}
+                >
+                  Reset $10k Wallet
+                </button>
+              </div>
+
+              <div className="portfolio-summary">
+                <div className="summary-card">
+                  <h3>Total Net Worth</h3>
+                  <div className="big-num">
+                    $
+                    {totalNetWorth.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                </div>
+                <div className="summary-card">
+                  <h3>Invested Value</h3>
+                  <div className="big-num">
+                    $
+                    {investedValue.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                </div>
+                <div className="summary-card">
+                  <h3>Open Profit / Loss</h3>
+                  <div
+                    className="big-num"
+                    style={{ color: totalProfit >= 0 ? '#3fb950' : '#f85149' }}
+                  >
+                    {totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {holdingsList.length === 0 ? (
+                <div className="summary-card" style={{ textAlign: 'center', padding: '40px' }}>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '14px' }}>
+                    You don't own any game shares yet.
+                  </p>
+                  <button className="sim-btn" onClick={() => setActiveTab('market')}>
+                    Browse Live Games
+                  </button>
+                </div>
+              ) : (
+                holdingsList.map((h) => (
+                  <div key={h.id} className="holding-row">
+                    <div>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>
+                        {h.title} <span className="ticker-tag">({h.ticker})</span>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        {h.shares.toFixed(3)} shares • Avg Buy: ${h.avgBuyPrice.toFixed(2)} • Price: $
+                        {h.price.toFixed(2)} ({h.currentPlayers.toLocaleString()} live players)
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 800 }}>
+                        ${h.currentValue.toFixed(2)}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.88rem',
+                          fontWeight: 700,
+                          color: h.profit >= 0 ? '#3fb950' : '#f85149',
+                        }}
+                      >
+                        {h.profit >= 0 ? '+' : ''}${h.profit.toFixed(2)} ({h.profitPct >= 0 ? '+' : ''}
+                        {h.profitPct.toFixed(2)}%)
+                      </div>
+                    </div>
+
+                    <div className="holding-actions">
+                      <button
+                        className="small-btn"
+                        style={{ background: 'var(--bg-hover)', color: 'white' }}
+                        onClick={() => setSelectedGameId(h.id)}
+                      >
+                        Graph / Trade
+                      </button>
+                      <button
+                        className="small-btn cashout-btn"
+                        onClick={() => handleSell(h, h.currentValue)}
+                      >
+                        Sell All (${h.currentValue.toFixed(2)})
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )
+        ) : activeTab === 'leaderboard' ? (
+          !user ? (
+            <div className="summary-card" style={{ textAlign: 'center', padding: '50px 20px' }}>
+              <h2 style={{ marginBottom: '10px' }}>Sign In to View the Leaderboard</h2>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+                See who has the highest Net Worth on GameStox in real time.
+              </p>
+              <button className="sim-btn" onClick={() => setShowAuthModal(true)}>
+                Sign In / Create Account
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="controls-row">
+                <h2>🏆 Global Leaderboard</h2>
+                <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+                  {leaderboardList.length} Traders • Ranked by Live Net Worth
+                </span>
+              </div>
+
+              {leaderboardList.map((trader, idx) => {
+                const isMe = trader.uid === user.uid;
+                const isFriend = friendIds.includes(trader.uid);
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+
+                return (
+                  <div
+                    key={trader.uid}
+                    className="holding-row"
+                    style={{
+                      border: isMe ? '1px solid #58a6ff' : undefined,
+                      background: isMe ? 'rgba(88, 166, 255, 0.08)' : undefined,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 800 }}>
+                        {medal} {trader.name}{' '}
+                        {isMe && (
+                          <span style={{ fontSize: '0.78rem', color: '#58a6ff', fontWeight: 700 }}>
+                            (You)
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        Cash: $
+                        {trader.cash.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}{' '}
+                        • Invested: $
+                        {trader.investedValue.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                        {trader.topGame ? ` • Top Pick: ${trader.topGame}` : ''}
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f0f6fc' }}>
+                        $
+                        {trader.netWorth.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.86rem',
+                          fontWeight: 700,
+                          color: trader.returnPct >= 0 ? '#3fb950' : '#f85149',
+                        }}
+                      >
+                        {trader.returnPct >= 0 ? '+' : ''}
+                        {trader.returnPct.toFixed(2)}% all-time
+                      </div>
+                    </div>
+
+                    <div className="holding-actions">
+                      {!isMe && !isFriend && (
+                        <button
+                          className="small-btn"
+                          style={{ background: '#1f6feb', color: 'white' }}
+                          onClick={() =>
+                            setDoc(
+                              doc(db, 'users', user.uid),
+                              { friends: arrayUnion(trader.uid) },
+                              { merge: true }
+                            )
+                          }
+                        >
+                          + Add Friend
+                        </button>
+                      )}
+                      {!isMe && isFriend && (
+                        <span style={{ fontSize: '0.82rem', color: '#3fb950', fontWeight: 700 }}>
+                          ✓ Friend
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : !user ? (
+          <div className="summary-card" style={{ textAlign: 'center', padding: '50px 20px' }}>
+            <h2 style={{ marginBottom: '10px' }}>Sign In to Add Friends</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Sign in to set your Trader Name, add friends, and track their net worth and investments live.
+            </p>
+            <button className="sim-btn" onClick={() => setShowAuthModal(true)}>
+              Sign In / Create Account
+            </button>
+          </div>
+        ) : (
+          <div>
+            <div className="controls-row">
+              <h2>👥 Friends & Live Portfolios</h2>
+            </div>
+
+            <div className="portfolio-summary" style={{ marginBottom: '22px' }}>
+              <div className="summary-card">
+                <h3>Your Searchable Trader Name</h3>
+                <form
+                  onSubmit={handleSaveName}
+                  style={{ display: 'flex', gap: '8px', marginTop: '10px' }}
+                >
+                  <input
+                    type="text"
+                    className="amount-input"
+                    value={newNameInput}
+                    onChange={(e) => setNewNameInput(e.target.value)}
+                    placeholder="Choose a unique name"
+                    style={{ marginBottom: 0 }}
+                  />
+                  <button
+                    type="submit"
+                    className="small-btn"
+                    style={{ background: '#238636', color: 'white', whiteSpace: 'nowrap' }}
+                  >
+                    Save Name
+                  </button>
+                </form>
+                {nameMsg && (
+                  <div style={{ fontSize: '0.82rem', color: '#58a6ff', marginTop: '8px' }}>
+                    {nameMsg}
+                  </div>
+                )}
+              </div>
+
+              <div className="summary-card">
+                <h3>Add a Friend by Name</h3>
+                <form
+                  onSubmit={handleAddFriend}
+                  style={{ display: 'flex', gap: '8px', marginTop: '10px' }}
+                >
+                  <input
+                    type="text"
+                    className="amount-input"
+                    value={friendSearch}
+                    onChange={(e) => setFriendSearch(e.target.value)}
+                    placeholder="Type friend's Trader Name..."
+                    style={{ marginBottom: 0 }}
+                  />
+                  <button
+                    type="submit"
+                    className="small-btn"
+                    style={{ background: '#1f6feb', color: 'white', whiteSpace: 'nowrap' }}
+                  >
+                    + Add Friend
+                  </button>
+                </form>
+                {friendMsg && (
+                  <div style={{ fontSize: '0.82rem', color: '#d29922', marginTop: '8px' }}>
+                    {friendMsg}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {enrichedFriends.length === 0 ? (
+              <div className="summary-card" style={{ textAlign: 'center', padding: '40px' }}>
+                <p style={{ color: 'var(--text-muted)' }}>
+                  No friends added yet. Share your Trader Name (<strong>{displayName}</strong>) and type a friend's name above!
+                </p>
+              </div>
+            ) : (
+              enrichedFriends.map((f, index) => (
+                <div
+                  key={f.uid}
+                  className="summary-card"
+                  style={{ marginBottom: '16px', padding: '20px' }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '12px',
+                      borderBottom: '1px solid #21262d',
+                      paddingBottom: '12px',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>
+                        #{index + 1} {f.name}
+                      </div>
+                      <div style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        Cash:{' '}
+                        <strong style={{ color: '#f0f6fc' }}>
+                          ${f.cash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </strong>{' '}
+                        • Invested:{' '}
+                        <strong style={{ color: '#f0f6fc' }}>
+                          ${f.investedValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          NET WORTH
+                        </div>
+                        <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#58a6ff' }}>
+                          ${f.netWorth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                      <button
+                        className="small-btn"
+                        style={{ background: '#21262d', color: '#f85149' }}
+                        onClick={() => handleRemoveFriend(f.uid)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+
+                  {f.holdings.length === 0 ? (
+                    <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+                      No active investments right now (100% cash).
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {f.holdings.map((h) => (
+                        <button
+                          key={h.id}
+                          onClick={() => setSelectedGameId(h.id)}
+                          style={{
+                            background: '#0d1117',
+                            border: '1px solid #30363d',
+                            borderRadius: '8px',
+                            padding: '8px 12px',
+                            color: '#f0f6fc',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontSize: '0.84rem',
+                          }}
+                        >
+                          <strong>{h.ticker}</strong> • {h.shares.toFixed(2)} sh •{' '}
+                          <span style={{ color: '#58a6ff', fontWeight: 700 }}>
+                            ${h.currentValue.toFixed(2)}
+                          </span>{' '}
+                          <span
+                            style={{
+                              color: h.profit >= 0 ? '#3fb950' : '#f85149',
+                              fontWeight: 700,
+                            }}
+                          >
+                            ({h.profit >= 0 ? '+' : ''}${h.profit.toFixed(2)})
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {selectedGame && (
+        <div className="modal-backdrop" onClick={() => setSelectedGameId(null)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div
+              style={{
+                height: '130px',
+                borderRadius: '10px',
+                backgroundImage: selectedGame.coverUrl
+                  ? `linear-gradient(to top, rgba(22,27,34,1) 5%, rgba(22,27,34,0.25) 100%), url(${selectedGame.coverUrl})`
+                  : selectedGame.gradient,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                marginBottom: '14px',
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'space-between',
+                padding: '14px',
+              }}
+            >
+              <div>
+                <h2>
+                  {selectedGame.title} ({selectedGame.ticker})
+                </h2>
+                <span style={{ color: '#c9d1d9', fontSize: '0.9rem' }}>
+                  👥 {selectedGame.currentPlayers.toLocaleString()} Live Players • Share Price:{' '}
+                  <strong style={{ color: 'white' }}>${selectedGame.price.toFixed(2)}</strong>
+                </span>
+              </div>
+              <button className="close-btn" onClick={() => setSelectedGameId(null)}>
+                ✕
+              </button>
+            </div>
+
+            <div className="chart-box">
+              <InteractiveRealChart
+                realHistory={selectedGame.playersHistory}
+                avgBuyPrice={selectedAvgBuy}
+                livePrice={selectedGame.price}
+              />
+            </div>
+
+            {!user ? (
+              <div
+                style={{
+                  background: '#161b22',
+                  border: '1px solid #30363d',
+                  borderRadius: '10px',
+                  padding: '20px',
+                  textAlign: 'center',
+                }}
+              >
+                <p style={{ color: '#c9d1d9', marginBottom: '12px' }}>
+                  Sign in to buy or sell <strong>{selectedGame.ticker}</strong> with your $10,000 portfolio.
+                </p>
+                <button
+                  className="action-btn buy-btn"
+                  style={{ maxWidth: '260px', margin: '0 auto' }}
+                  onClick={() => {
+                    setSelectedGameId(null);
+                    setShowAuthModal(true);
+                  }}
+                >
+                  Sign In to Trade
+                </button>
+              </div>
+            ) : (
+              <div className="trade-panel">
+                <div className="trade-box">
+                  <h4 style={{ marginBottom: '8px' }}>Trade Amount ($)</h4>
+                  <input
+                    type="number"
+                    className="amount-input"
+                    value={tradeAmount}
+                    onChange={(e) => setTradeAmount(e.target.value)}
+                    min="1"
+                  />
+                  <div className="quick-amounts">
+                    <button className="amt-btn" onClick={() => setTradeAmount('100')}>
+                      $100
+                    </button>
+                    <button className="amt-btn" onClick={() => setTradeAmount('500')}>
+                      $500
+                    </button>
+                    <button
+                      className="amt-btn"
+                      onClick={() => setTradeAmount(Math.floor(cash * 0.25).toString())}
+                    >
+                      25% Cash
+                    </button>
+                    <button
+                      className="amt-btn"
+                      onClick={() => setTradeAmount(Math.floor(cash).toString())}
+                    >
+                      MAX
+                    </button>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    ≈{' '}
+                    {selectedGame.price > 0
+                      ? ((Number(tradeAmount) || 0) / selectedGame.price).toFixed(3)
+                      : '0.000'}{' '}
+                    shares of {selectedGame.ticker}
+                  </div>
+                </div>
+
+                <div
+                  className="trade-box"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <h4 style={{ marginBottom: '6px' }}>Your Position</h4>
+                    {portfolio[selectedGame.id] ? (
+                      <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                        You own <strong>{portfolio[selectedGame.id].shares.toFixed(3)} shares</strong>{' '}
+                        worth{' '}
+                        <strong style={{ color: 'white' }}>
+                          ${(portfolio[selectedGame.id].shares * selectedGame.price).toFixed(2)}
+                        </strong>
+                      </p>
+                    ) : (
+                      <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                        You don't own shares in this game yet.
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <button
+                      className="action-btn buy-btn"
+                      disabled={
+                        !Number(tradeAmount) || Number(tradeAmount) > cash || selectedGame.price <= 0
+                      }
+                      onClick={() => handleBuy(selectedGame, tradeAmount)}
+                    >
+                      Buy ${Number(tradeAmount) || 0} of {selectedGame.ticker}
+                    </button>
+
+                    <button
+                      className="action-btn sell-btn"
+                      disabled={
+                        !portfolio[selectedGame.id] || !Number(tradeAmount) || selectedGame.price <= 0
+                      }
+                      onClick={() => handleSell(selectedGame, tradeAmount)}
+                    >
+                      Sell ${Number(tradeAmount) || 0} of {selectedGame.ticker}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showHelpModal && <HowItWorksModal onClose={() => setShowHelpModal(false)} />}
+
+      {toast && (
+        <div className={`toast-banner ${toast.type === 'sell' ? 'toast-sell' : 'toast-buy'}`}>
+          {toast.type === 'sell' ? '💰 ' : '✅ '}
+          {toast.message}
+        </div>
+      )}
+    </div>
+  );
 }
