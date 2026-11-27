@@ -19,9 +19,16 @@ const GAMES = [
   { id: 'hd2', source: 'steam', appId: 553850 },
   { id: 'elden', source: 'steam', appId: 1245620 },
   { id: 'balatro', source: 'steam', appId: 2379780 },
+  // --- NEW FAMOUS GAMES ---
+  { id: 'gtav', source: 'steam', appId: 271590 },
+  { id: 'cod', source: 'steam', appId: 1938090 },
+  { id: 'tf2', source: 'steam', appId: 440 },
+  { id: 'dbd', source: 'steam', appId: 381210 },
+  { id: 'warframe', source: 'steam', appId: 230410 },
+  { id: 'bg3', source: 'steam', appId: 1086940 },
+  { id: 'bloxfruits', source: 'roblox', universeId: 994732206 },
+  { id: 'brookhaven', source: 'roblox', universeId: 1686885941 },
 ];
-
-const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 async function getCount(game) {
   try {
@@ -36,6 +43,13 @@ async function getCount(game) {
       const res = await fetch(`https://api.mcsrvstat.us/3/${game.serverIp}`);
       const json = await res.json();
       return json?.players?.online ?? null;
+    }
+    if (game.source === 'roblox') {
+      const res = await fetch(
+        `https://games.roblox.com/v1/games?universeIds=${game.universeId}`
+      );
+      const json = await res.json();
+      return json?.data?.[0]?.playing ?? null;
     }
   } catch (e) {
     console.error(`Failed ${game.id}:`, e);
