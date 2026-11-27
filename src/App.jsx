@@ -577,6 +577,47 @@ function InteractiveRealChart({ realHistory, avgBuyPrice, livePrice }) {
   );
 }
 
+function HowItWorksModal({ onClose }) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal-box"
+        style={{ maxWidth: '480px', padding: '26px' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '14px',
+          }}
+        >
+          <h2>How GameStox Works</h2>
+          <button className="close-btn" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#c9d1d9', fontSize: '0.93rem', lineHeight: 1.5 }}>
+          <p>
+            <strong>1. Powered by Real Players:</strong> Every 5 minutes, our 24/7 cloud collector pulls live player counts from Steam, Epic Games, Roblox, and Hypixel.
+          </p>
+          <p>
+            <strong>2. Now vs. Yesterday Pricing:</strong> Instead of letting people cheat by buying at 3 AM and selling at 7 PM, prices compare <strong>right now</strong> against the <strong>exact same time yesterday</strong>. If a game beats yesterday's pace (new update, weekend surge, viral stream), its stock jumps immediately.
+          </p>
+          <p>
+            <strong>3. Compete with Friends:</strong> Everyone starts with <strong>$10,000</strong> in virtual cash. Add friends by their Trader Name to track their portfolios and climb the Global Leaderboard.
+          </p>
+          <p style={{ fontSize: '0.82rem', color: '#8b949e', borderTop: '1px solid #21262d', paddingTop: '10px' }}>
+            🚧 <strong>Beta Notice:</strong> GameStox is currently in Beta. Wallets and leaderboards may be reset before v1.0.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AuthModal({ onClose }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -736,6 +777,8 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const [historyMap, setHistoryMap] = useState({});
   const [cash, setCash] = useState(10000);
@@ -752,10 +795,19 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('market');
   const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('default');
   const [selectedGameId, setSelectedGameId] = useState(null);
   const [tradeAmount, setTradeAmount] = useState('500');
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
+
+  const showToast = (message, type = 'buy') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((prev) => (prev?.message === message ? null : prev));
+    }, 3000);
+  };
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
@@ -824,7 +876,6 @@ export default function App() {
     return () => unsubUser();
   }, [user, authReady]);
 
-  // Real-time listener for all added friends
   useEffect(() => {
     if (!user || friendIds.length === 0) {
       setFriendsData({});
@@ -845,7 +896,6 @@ export default function App() {
     return () => unsubs.forEach((unsub) => unsub());
   }, [user, friendIds.join(',')]);
 
-  // Real-time listener for the Global Leaderboard (only runs while tab is open)
   useEffect(() => {
     if (!user || activeTab !== 'leaderboard') return;
 
@@ -860,7 +910,6 @@ export default function App() {
     return () => unsubscribe();
   }, [user, activeTab]);
 
-  // Listen to market history
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'market'), (snapshot) => {
       const nextMap = {};
@@ -1132,6 +1181,7 @@ export default function App() {
     setCash(nextCash);
     setPortfolio(nextPortfolio);
     await saveUserState(nextCash, nextPortfolio);
+    showToast(`Bought ${sharesBought.toFixed(3)} ${game.ticker} for $${amount.toFixed(2)}`, 'buy');
   };
 
   const handleSell = async (game, dollarAmt) => {
@@ -1167,6 +1217,7 @@ export default function App() {
     setCash(nextCash);
     setPortfolio(nextPortfolio);
     await saveUserState(nextCash, nextPortfolio);
+    showToast(`Sold ${sharesSold.toFixed(3)} ${game.ticker} for $${sellDollars.toFixed(2)}`, 'sell');
   };
 
   const resetAccount = async () => {
@@ -1175,13 +1226,29 @@ export default function App() {
     setCash(10000);
     setPortfolio({});
     await saveUserState(10000, {});
+    showToast('Wallet reset to $10,000.00', 'buy');
   };
 
-  const filteredGames = enrichedGames.filter((g) => {
-    if (filter === 'gainers') return g.changePct > 0;
-    if (filter === 'popular') return g.currentPlayers >= 100000;
-    return true;
-  });
+  const filteredGames = enrichedGames
+    .filter((g) => {
+      if (filter === 'gainers' && g.changePct <= 0) return false;
+      if (filter === 'popular' && g.currentPlayers < 100000) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        return (
+          g.title.toLowerCase().includes(q) ||
+          g.ticker.toLowerCase().includes(q) ||
+          g.genre.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'players') return b.currentPlayers - a.currentPlayers;
+      if (sortBy === 'gainers') return b.changePct - a.changePct;
+      if (sortBy === 'price') return b.price - a.price;
+      return 0;
+    });
 
   return (
     <div>
@@ -1202,7 +1269,39 @@ export default function App() {
       </div>
 
       <nav className="navbar">
-        <div className="brand">🎮 GameStox</div>
+        <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>🎮 GameStox</span>
+          <span
+            style={{
+              fontSize: '0.68rem',
+              fontWeight: 800,
+              background: '#1f6feb',
+              color: '#ffffff',
+              padding: '2px 7px',
+              borderRadius: '999px',
+              letterSpacing: '0.05em',
+            }}
+          >
+            BETA
+          </span>
+          <button
+            onClick={() => setShowHelpModal(true)}
+            title="How Prices Work"
+            style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              border: '1px solid #30363d',
+              background: '#161b22',
+              color: '#8b949e',
+              fontWeight: 800,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+            }}
+          >
+            ?
+          </button>
+        </div>
 
         <div className="nav-tabs">
           <button
@@ -1292,21 +1391,43 @@ export default function App() {
                   className={`pill ${filter === 'all' ? 'active' : ''}`}
                   onClick={() => setFilter('all')}
                 >
-                  All Games ({enrichedGames.length})
+                  All ({enrichedGames.length})
                 </button>
                 <button
                   className={`pill ${filter === 'gainers' ? 'active' : ''}`}
                   onClick={() => setFilter('gainers')}
                 >
-                  🔥 Rising (24H)
+                  🔥 Rising
                 </button>
                 <button
                   className={`pill ${filter === 'popular' ? 'active' : ''}`}
                   onClick={() => setFilter('popular')}
                 >
-                  👑 100K+ Concurrent
+                  👑 100K+
                 </button>
               </div>
+            </div>
+
+            <div className="search-sort-row">
+              <input
+                type="text"
+                className="amount-input"
+                placeholder="🔍 Search game, ticker, or genre..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ marginBottom: 0, flex: 1, minWidth: '200px' }}
+              />
+              <select
+                className="amount-input"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                style={{ marginBottom: 0, width: 'auto', minWidth: '175px', cursor: 'pointer' }}
+              >
+                <option value="default">Sort: Featured</option>
+                <option value="players">Sort: Most Players</option>
+                <option value="gainers">Sort: Top Gainers (%)</option>
+                <option value="price">Sort: Highest Price</option>
+              </select>
             </div>
 
             <div className="game-grid">
@@ -1929,6 +2050,14 @@ export default function App() {
       )}
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showHelpModal && <HowItWorksModal onClose={() => setShowHelpModal(false)} />}
+
+      {toast && (
+        <div className={`toast-banner ${toast.type === 'sell' ? 'toast-sell' : 'toast-buy'}`}>
+          {toast.type === 'sell' ? '💰 ' : '✅ '}
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }
