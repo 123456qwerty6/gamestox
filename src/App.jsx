@@ -836,7 +836,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  const enrichedGames = INITIAL_GAMES.map((g) => {
+const enrichedGames = INITIAL_GAMES.map((g) => {
     const playersHistory = historyMap[g.id] || [];
     const len = playersHistory.length;
     const latestEntry = len > 0 ? playersHistory[len - 1] : null;
@@ -844,6 +844,7 @@ export default function App() {
     const openEntry = recent24h.length > 0 ? recent24h[0] : latestEntry;
 
     const currentPlayers = latestEntry ? latestEntry.players : 0;
+    const yesterdayPlayers = latestEntry?.yesterdayPlayers ?? null;
     const basePlayers = latestEntry
       ? latestEntry.fairPlayers ?? latestEntry.rollingAvg ?? latestEntry.players
       : 0;
@@ -851,14 +852,20 @@ export default function App() {
       ? openEntry.fairPlayers ?? openEntry.rollingAvg ?? openEntry.players
       : basePlayers;
 
-    // Quietly apply hidden user-demand multiplier
-    const demandMult = demandMap[g.id] ?? 1;
-    const price = basePlayers > 0 ? Number((calcPrice(basePlayers) * demandMult).toFixed(2)) : 0;
+    const price = basePlayers > 0 ? calcPrice(basePlayers) : 0;
     const openPrice = openBasePlayers > 0 ? calcPrice(openBasePlayers) : price;
-    const changePct =
-      openPrice > 0 ? Number((((price - openPrice) / openPrice) * 100).toFixed(2)) : 0;
 
-    return { ...g, playersHistory, currentPlayers, price, changePct };
+    // Red/Green % = Now vs. same time yesterday (falls back to open price if <24h of data)
+    let changePct = 0;
+    if (yesterdayPlayers && yesterdayPlayers > 0 && currentPlayers > 0) {
+      changePct = Number(
+        (((currentPlayers - yesterdayPlayers) / yesterdayPlayers) * 100).toFixed(2)
+      );
+    } else if (openPrice > 0) {
+      changePct = Number((((price - openPrice) / openPrice) * 100).toFixed(2));
+    }
+
+    return { ...g, playersHistory, currentPlayers, yesterdayPlayers, price, changePct };
   });
 
   const holdingsList = Object.entries(portfolio)
