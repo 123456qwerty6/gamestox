@@ -49,6 +49,16 @@ const INITIAL_GAMES = [
     gradient: 'linear-gradient(135deg, #d97706, #78350f)',
   },
   {
+    id: 'fortnite',
+    source: 'fortnite',
+    ticker: 'FN',
+    title: 'Fortnite (Battle Royale)',
+    genre: 'Battle Royale',
+    badge: '🪂 Epic Mega-Hit',
+    coverUrl: 'https://cdn2.unrealengine.com/fortnite-chapter-5-season-1-1920x1080-9549c2464615.jpg',
+    gradient: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+  },
+  {
     id: 'pubg',
     source: 'steam',
     appId: 578080,
