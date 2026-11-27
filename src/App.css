@@ -481,3 +481,87 @@ body {
   font-size: 0.75rem;
   font-weight: 700;
 }
+.search-sort-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.toast-banner {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #ffffff;
+  z-index: 9999;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+}
+
+.toast-buy {
+  background: #238636;
+  border: 1px solid #3fb950;
+}
+
+.toast-sell {
+  background: #da3633;
+  border: 1px solid #f85149;
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .nav-tabs {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .wallet-stats {
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .controls-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .game-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trade-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .holding-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .holding-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .modal-box {
+    width: 95%;
+    max-height: 92vh;
+    overflow-y: auto;
+    padding: 16px;
+  }
+}
