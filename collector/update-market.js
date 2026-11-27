@@ -54,51 +54,36 @@ async function getCount(game) {
       return json?.data?.[0]?.playing ?? null;
     }
     if (game.source === 'fortnite') {
-      const playlists = [
-        'playlist_defaultsolo',
-        'playlist_defaultduo',
-        'playlist_trios',
-        'playlist_defaultsquad',
-        'playlist_nobuildbr_solo',
-        'playlist_nobuildbr_duo',
-        'playlist_nobuildbr_trio',
-        'playlist_nobuildbr_squad',
-        'playlist_blastberry_solo',
-        'playlist_blastberry_duo',
-        'playlist_blastberry_squad',
-        'playlist_ranked_solo',
-        'playlist_ranked_duo',
-        'playlist_ranked_squad',
-      ];
+  const islands = [
+    'set_br_playlists',       // Battle Royale
+    'set_nobuild_playlists',  // Zero Build
+  ];
 
-      const fromIso = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      let totalCcu = 0;
+  let totalCcu = 0;
 
-      for (const code of playlists) {
-        try {
-          const url = `https://api.fortnite.com/ecosystem/v1/islands/${code}/metrics/minute/peak-ccu?from=${encodeURIComponent(fromIso)}`;
-          const res = await fetch(url, {
-            headers: { Accept: 'application/json' },
-          });
-          if (!res.ok) continue;
-          const json = await res.json();
-          const intervals = json?.intervals ?? [];
-          const latest = intervals[intervals.length - 1];
-          if (latest && typeof latest.value === 'number' && latest.value > 0) {
-            totalCcu += latest.value;
-          }
-        } catch {
-          // Skip individual playlist timeout and keep summing the rest
-        }
-      }
+  for (const code of islands) {
+    const url = `https://api.fortnite.com/ecosystem/v1/islands/${code}/metrics/ten-minute/peak-ccu`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
 
-      if (totalCcu > 0) {
-        return totalCcu;
-      }
-
-      console.warn('Fortnite Epic API returned 0 across playlists');
-      return null;
+    if (!res.ok) {
+      console.warn(`Fortnite ${code} HTTP ${res.status}`);
+      continue;
     }
+
+    const json = await res.json();
+    const intervals = json?.intervals ?? [];
+    // Grab the most recent non-null interval
+    const valid = intervals.filter((i) => typeof i.value === 'number' && i.value > 0);
+    const latest = valid[valid.length - 1];
+    if (latest) {
+      totalCcu += latest.value;
+    }
+  }
+
+  if (totalCcu > 0) return totalCcu;
+  console.warn('Fortnite Epic API returned 0');
+  return null;
+}
   } catch (e) {
     console.error(`Failed ${game.id}:`, e);
     return null;
