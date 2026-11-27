@@ -72,7 +72,7 @@ async function getCount(game) {
 
 function findYesterdayPlayers(history, now) {
   const targetTime = now - TWENTY_FOUR_HOURS_MS;
-  const maxDiffMs = 45 * 60 * 1000; // Within 45 mins of the same time yesterday
+  const maxDiffMs = 45 * 60 * 1000;
   let closest = null;
   let smallestDiff = Infinity;
 
@@ -106,7 +106,6 @@ async function run() {
     const snap = await docRef.get();
     const existing = snap.exists ? snap.data().history || [] : [];
 
-    // Keep 48 hours of ticks so we always have yesterday's exact time to compare against
     const recent48h = existing
       .filter((entry) => !entry.timestamp || entry.timestamp >= cutoff48h)
       .slice(-575);
@@ -117,7 +116,6 @@ async function run() {
       all24hForAvg.reduce((sum, entry) => sum + entry.players, 0) / all24hForAvg.length
     );
 
-    // Now vs. Yesterday momentum: if today beats yesterday at this exact hour, price jumps immediately
     const yesterdayPlayers = findYesterdayPlayers(recent48h, now);
     let fairPlayers = rolling24hAvg;
     if (yesterdayPlayers && yesterdayPlayers > 0) {
@@ -125,13 +123,11 @@ async function run() {
       fairPlayers = Math.round(rolling24hAvg * ratio);
     }
 
-    const effectivePlayers = Math.round(fairPlayers * demandMult);
-
     const newTick = {
       players: count,
       yesterdayPlayers: yesterdayPlayers ?? null,
       rollingAvg: rolling24hAvg,
-      fairPlayers: effectivePlayers,
+      fairPlayers,
       timeLabel: nowLabel,
       timestamp: now,
     };
@@ -143,13 +139,13 @@ async function run() {
         history: updatedHistory,
         livePlayers: count,
         rolling24hPlayers: rolling24hAvg,
-        fairPlayers: effectivePlayers,
+        fairPlayers,
         updatedAt: now,
       },
       { merge: true }
     );
 
-    console.log(`Updated ${game.id}: live=${count}, yest=${yesterdayPlayers ?? 'n/a'}, fair=${effectivePlayers}`);
+    console.log(`Updated ${game.id}: live=${count}, yest=${yesterdayPlayers ?? 'n/a'}, fair=${fairPlayers}`);
   }
 }
 
