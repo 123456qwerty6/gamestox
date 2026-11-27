@@ -9,6 +9,7 @@ initializeApp({ credential: cert(serviceAccount) });
 const db = getFirestore();
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
 
 const GAMES = [
   { id: 'fortnite', source: 'fortnite' },
@@ -53,36 +54,43 @@ async function getCount(game) {
       const json = await res.json();
       return json?.data?.[0]?.playing ?? null;
     }
-   if (game.source === 'fortnite') {
-  const url = 'https://api.fortnite.com/ecosystem/v1/metrics/minute/in-client-peak-ccu';
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
-
-  if (!res.ok) {
-    console.warn(`Fortnite API HTTP ${res.status}:`, await res.text());
-    return null;
-  }
-
-  const json = await res.json();
-  const list = json?.intervals ?? json?.inClientPeakCcu ?? json?.data ?? (Array.isArray(json) ? json : []);
-  const valid = list.filter((item) => typeof item?.value === 'number' && item.value > 0);
-  const latest = valid[valid.length - 1];
-
-  if (latest) {
-    return latest.value;
-  }
-
-  console.warn('Fortnite unexpected JSON:', JSON.stringify(json).slice(0, 300));
-  return null;
-}
+    if (game.source === 'fortnite') {
+      const url = 'https://api.fortnite.com/ecosystem/v1/metrics/minute/in-client-peak-ccu';
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const list = json?.intervals ?? json?.inClientPeakCcu ?? json?.data ?? (Array.isArray(json) ? json : []);
+      const valid = list.filter((item) => typeof item?.value === 'number' && item.value > 0);
+      const latest = valid[valid.length - 1];
+      return latest ? latest.value : null;
+    }
   } catch (e) {
     console.error(`Failed ${game.id}:`, e);
     return null;
   }
 }
 
+function findYesterdayPlayers(history, now) {
+  const targetTime = now - TWENTY_FOUR_HOURS_MS;
+  const maxDiffMs = 45 * 60 * 1000; // Within 45 mins of the same time yesterday
+  let closest = null;
+  let smallestDiff = Infinity;
+
+  for (const entry of history) {
+    if (!entry.timestamp || !entry.players) continue;
+    const diff = Math.abs(entry.timestamp - targetTime);
+    if (diff < smallestDiff && diff <= maxDiffMs) {
+      smallestDiff = diff;
+      closest = entry.players;
+    }
+  }
+  return closest;
+}
+
 async function run() {
   const now = Date.now();
   const cutoff24h = now - TWENTY_FOUR_HOURS_MS;
+  const cutoff48h = now - FORTY_EIGHT_HOURS_MS;
 
   const nowLabel = new Date(now).toLocaleTimeString('en-US', {
     hour: '2-digit',
@@ -98,35 +106,59 @@ async function run() {
     const snap = await docRef.get();
     const existing = snap.exists ? snap.data().history || [] : [];
 
-    const recentTicks = existing
-      .filter((entry) => !entry.timestamp || entry.timestamp >= cutoff24h)
-      .slice(-287);
+    // Keep 48 hours of ticks so we always have yesterday's exact time to compare against
+    const recent48h = existing
+      .filter((entry) => !entry.timestamp || entry.timestamp >= cutoff48h)
+      .slice(-575);
 
-    const allTicksForAvg = [...recentTicks, { players: count }];
+    const recent24h = recent48h.filter((entry) => !entry.timestamp || entry.timestamp >= cutoff24h);
+    const all24hForAvg = [...recent24h, { players: count }];
     const rolling24hAvg = Math.round(
-      allTicksForAvg.reduce((sum, entry) => sum + entry.players, 0) / allTicksForAvg.length
+      all24hForAvg.reduce((sum, entry) => sum + entry.players, 0) / all24hForAvg.length
     );
+
+    // Now vs. Yesterday momentum: if today beats yesterday at this exact hour, price jumps immediately
+    const yesterdayPlayers = findYesterdayPlayers(recent48h, now);
+    let fairPlayers = rolling24hAvg;
+    if (yesterdayPlayers && yesterdayPlayers > 0) {
+      const ratio = Math.max(0.5, Math.min(2.0, count / yesterdayPlayers));
+      fairPlayers = Math.round(rolling24hAvg * ratio);
+    }
+
+    // Quietly decay the hidden user-demand multiplier back toward 1.0 (5% per 5-min tick)
+    const demandRef = db.collection('demand').doc(game.id);
+    const demandSnap = await demandRef.get();
+    let demandMult = demandSnap.exists ? Number(demandSnap.data().multiplier || 1) : 1;
+    if (Math.abs(demandMult - 1) > 0.0005) {
+      demandMult = Number((1 + (demandMult - 1) * 0.95).toFixed(4));
+      await demandRef.set({ multiplier: demandMult, updatedAt: now }, { merge: true });
+    }
+
+    const effectivePlayers = Math.round(fairPlayers * demandMult);
 
     const newTick = {
       players: count,
+      yesterdayPlayers: yesterdayPlayers ?? null,
       rollingAvg: rolling24hAvg,
+      fairPlayers: effectivePlayers,
       timeLabel: nowLabel,
       timestamp: now,
     };
 
-    const updatedHistory = [...recentTicks, newTick];
+    const updatedHistory = [...recent48h, newTick];
 
     await docRef.set(
       {
         history: updatedHistory,
         livePlayers: count,
         rolling24hPlayers: rolling24hAvg,
+        fairPlayers: effectivePlayers,
         updatedAt: now,
       },
       { merge: true }
     );
 
-    console.log(`Updated ${game.id}: live=${count}, 24hAvg=${rolling24hAvg}`);
+    console.log(`Updated ${game.id}: live=${count}, yest=${yesterdayPlayers ?? 'n/a'}, fair=${effectivePlayers}`);
   }
 }
 
