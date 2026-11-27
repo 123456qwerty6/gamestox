@@ -11,6 +11,16 @@ const db = getFirestore();
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 const GAMES = [
+  {
+  id: 'fortnite',
+  source: 'fortnite',
+  playlists: [
+    'playlist_defaultsolo',
+    'playlist_defaultduo',
+    'playlist_trios',
+    'playlist_defaultsquad',
+  ],
+},
   { id: 'cs2', source: 'steam', appId: 730 },
   { id: 'pubg', source: 'steam', appId: 578080 },
   { id: 'dota2', source: 'steam', appId: 570 },
@@ -49,6 +59,19 @@ async function getCount(game) {
       const res = await fetch(
         `https://games.roblox.com/v1/games?universeIds=${game.universeId}`
       );
+      if (game.source === 'fortnite') {
+  let totalCcu = 0;
+  for (const code of game.playlists) {
+    const res = await fetch(
+      `https://api.fortnite.com/ecosystem/v1/islands/${code}/metrics/minute/peak-ccu`
+    );
+    const json = await res.json();
+    const intervals = json?.intervals ?? [];
+    const latest = intervals[intervals.length - 1];
+    if (latest?.value) totalCcu += latest.value;
+  }
+  return totalCcu > 0 ? totalCcu : null;
+}
       const json = await res.json();
       return json?.data?.[0]?.playing ?? null;
     }
