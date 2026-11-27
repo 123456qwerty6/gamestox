@@ -743,6 +743,7 @@ export default function App() {
   const [displayName, setDisplayName] = useState('');
   const [friendIds, setFriendIds] = useState([]);
   const [friendsData, setFriendsData] = useState({});
+  const [allUsers, setAllUsers] = useState([]);
 
   const [friendSearch, setFriendSearch] = useState('');
   const [friendMsg, setFriendMsg] = useState('');
@@ -773,6 +774,7 @@ export default function App() {
       setDisplayName('');
       setFriendIds([]);
       setFriendsData({});
+      setAllUsers([]);
       return;
     }
 
@@ -842,6 +844,21 @@ export default function App() {
 
     return () => unsubs.forEach((unsub) => unsub());
   }, [user, friendIds.join(',')]);
+
+  // Real-time listener for the Global Leaderboard (only runs while tab is open)
+  useEffect(() => {
+    if (!user || activeTab !== 'leaderboard') return;
+
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const list = [];
+      snapshot.forEach((docSnap) => {
+        list.push({ uid: docSnap.id, ...docSnap.data() });
+      });
+      setAllUsers(list);
+    });
+
+    return () => unsubscribe();
+  }, [user, activeTab]);
 
   // Listen to market history
   useEffect(() => {
@@ -925,7 +942,6 @@ export default function App() {
   const totalNetWorth = cash + investedValue;
   const totalProfit = investedValue - totalCostBasis;
 
-  // Build live enriched friends list sorted by Net Worth
   const enrichedFriends = friendIds
     .map((fUid) => friendsData[fUid])
     .filter(Boolean)
@@ -957,6 +973,40 @@ export default function App() {
         investedValue: fInvested,
         netWorth: fCash + fInvested,
         holdings: fHoldings,
+      };
+    })
+    .sort((a, b) => b.netWorth - a.netWorth);
+
+  const leaderboardList = allUsers
+    .map((u) => {
+      const uCash = typeof u.cash === 'number' ? u.cash : 10000;
+      let uInvested = 0;
+      let topGame = null;
+      let topVal = 0;
+
+      Object.entries(u.portfolio || {}).forEach(([gameId, data]) => {
+        if (data.shares > 0.0001) {
+          const game = enrichedGames.find((g) => g.id === gameId);
+          const val = data.shares * (game?.price || 0);
+          uInvested += val;
+          if (val > topVal) {
+            topVal = val;
+            topGame = game?.ticker || gameId.toUpperCase();
+          }
+        }
+      });
+
+      const netWorth = uCash + uInvested;
+      const returnPct = ((netWorth - 10000) / 10000) * 100;
+
+      return {
+        uid: u.uid,
+        name: u.displayName || 'Trader',
+        cash: uCash,
+        investedValue: uInvested,
+        netWorth,
+        returnPct,
+        topGame,
       };
     })
     .sort((a, b) => b.netWorth - a.netWorth);
@@ -1172,6 +1222,12 @@ export default function App() {
             onClick={() => setActiveTab('friends')}
           >
             👥 Friends ({friendIds.length})
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('leaderboard')}
+          >
+            🏆 Leaderboard
           </button>
         </div>
 
@@ -1427,6 +1483,111 @@ export default function App() {
                   </div>
                 ))
               )}
+            </div>
+          )
+        ) : activeTab === 'leaderboard' ? (
+          !user ? (
+            <div className="summary-card" style={{ textAlign: 'center', padding: '50px 20px' }}>
+              <h2 style={{ marginBottom: '10px' }}>Sign In to View the Leaderboard</h2>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+                See who has the highest Net Worth on GameStox in real time.
+              </p>
+              <button className="sim-btn" onClick={() => setShowAuthModal(true)}>
+                Sign In / Create Account
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="controls-row">
+                <h2>🏆 Global Leaderboard</h2>
+                <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+                  {leaderboardList.length} Traders • Ranked by Live Net Worth
+                </span>
+              </div>
+
+              {leaderboardList.map((trader, idx) => {
+                const isMe = trader.uid === user.uid;
+                const isFriend = friendIds.includes(trader.uid);
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+
+                return (
+                  <div
+                    key={trader.uid}
+                    className="holding-row"
+                    style={{
+                      border: isMe ? '1px solid #58a6ff' : undefined,
+                      background: isMe ? 'rgba(88, 166, 255, 0.08)' : undefined,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 800 }}>
+                        {medal} {trader.name}{' '}
+                        {isMe && (
+                          <span style={{ fontSize: '0.78rem', color: '#58a6ff', fontWeight: 700 }}>
+                            (You)
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        Cash: $
+                        {trader.cash.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}{' '}
+                        • Invested: $
+                        {trader.investedValue.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                        {trader.topGame ? ` • Top Pick: ${trader.topGame}` : ''}
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f0f6fc' }}>
+                        $
+                        {trader.netWorth.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.86rem',
+                          fontWeight: 700,
+                          color: trader.returnPct >= 0 ? '#3fb950' : '#f85149',
+                        }}
+                      >
+                        {trader.returnPct >= 0 ? '+' : ''}
+                        {trader.returnPct.toFixed(2)}% all-time
+                      </div>
+                    </div>
+
+                    <div className="holding-actions">
+                      {!isMe && !isFriend && (
+                        <button
+                          className="small-btn"
+                          style={{ background: '#1f6feb', color: 'white' }}
+                          onClick={() =>
+                            setDoc(
+                              doc(db, 'users', user.uid),
+                              { friends: arrayUnion(trader.uid) },
+                              { merge: true }
+                            )
+                          }
+                        >
+                          + Add Friend
+                        </button>
+                      )}
+                      {!isMe && isFriend && (
+                        <span style={{ fontSize: '0.82rem', color: '#3fb950', fontWeight: 700 }}>
+                          ✓ Friend
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )
         ) : !user ? (
