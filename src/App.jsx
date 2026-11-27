@@ -7,6 +7,11 @@ import {
   onSnapshot,
   setDoc,
   getDoc,
+  getDocs,
+  query,
+  where,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
 import {
   getAuth,
@@ -231,7 +236,7 @@ const INITIAL_GAMES = [
     ticker: 'BLOX',
     title: 'Blox Fruits (Roblox)',
     genre: 'Anime Action RPG',
-    badge: '🏴☠️ Roblox Mega-Hit',
+    badge: '🏴‍☠️ Roblox Mega-Hit',
     coverUrl: '',
     gradient: 'linear-gradient(135deg, #2563eb, #0f172a)',
   },
@@ -252,7 +257,7 @@ const calcPrice = (players) => Number(Math.max(0.5, players / 1000).toFixed(2));
 
 function InteractiveRealChart({ realHistory, avgBuyPrice, livePrice }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
-  const [chartMode, setChartMode] = useState('price'); // 'price' | 'compare' | 'live'
+  const [chartMode, setChartMode] = useState('price');
 
   if (!realHistory || realHistory.length === 0) {
     return (
@@ -270,7 +275,6 @@ function InteractiveRealChart({ realHistory, avgBuyPrice, livePrice }) {
     );
   }
 
-  // Show the latest 24 hours (up to 288 ticks) on the chart
   const recent24h = realHistory.slice(-288);
   const series =
     recent24h.length === 1
@@ -339,7 +343,6 @@ function InteractiveRealChart({ realHistory, avgBuyPrice, livePrice }) {
     coords[0].x
   } ${padTop + chartH} Z`;
 
-  // Build dotted line path for Yesterday's player count in 'compare' mode
   let yesterdayPath = '';
   if (chartMode === 'compare') {
     let penDown = false;
@@ -375,7 +378,6 @@ function InteractiveRealChart({ realHistory, avgBuyPrice, livePrice }) {
 
   return (
     <div>
-      {/* 3-Tab Graph Switcher */}
       <div
         style={{
           display: 'flex',
@@ -419,7 +421,6 @@ function InteractiveRealChart({ realHistory, avgBuyPrice, livePrice }) {
         </div>
       </div>
 
-      {/* Dynamic Header Readout */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', flexWrap: 'wrap', marginBottom: '8px' }}>
         {chartMode === 'price' && (
           <>
@@ -499,7 +500,6 @@ function InteractiveRealChart({ realHistory, avgBuyPrice, livePrice }) {
           </>
         )}
 
-        {/* Yesterday dotted overlay in Compare mode */}
         {chartMode === 'compare' && yesterdayPath && (
           <path
             d={yesterdayPath}
@@ -740,6 +740,15 @@ export default function App() {
   const [historyMap, setHistoryMap] = useState({});
   const [cash, setCash] = useState(10000);
   const [portfolio, setPortfolio] = useState({});
+  const [displayName, setDisplayName] = useState('');
+  const [friendIds, setFriendIds] = useState([]);
+  const [friendsData, setFriendsData] = useState({});
+
+  const [friendSearch, setFriendSearch] = useState('');
+  const [friendMsg, setFriendMsg] = useState('');
+  const [newNameInput, setNewNameInput] = useState('');
+  const [nameMsg, setNameMsg] = useState('');
+
   const [activeTab, setActiveTab] = useState('market');
   const [filter, setFilter] = useState('all');
   const [selectedGameId, setSelectedGameId] = useState(null);
@@ -761,6 +770,9 @@ export default function App() {
     if (!user) {
       setCash(10000);
       setPortfolio({});
+      setDisplayName('');
+      setFriendIds([]);
+      setFriendsData({});
       return;
     }
 
@@ -770,21 +782,35 @@ export default function App() {
     const initAndSubscribeUser = async () => {
       try {
         const snap = await getDoc(userDocRef);
+        const defaultName = user.displayName || user.email?.split('@')[0] || 'Trader';
+
         if (!snap.exists()) {
           await setDoc(userDocRef, {
-            email: user.email || '',
-            displayName: user.displayName || user.email?.split('@')[0] || 'Trader',
+            displayName: defaultName,
+            nameLower: defaultName.toLowerCase(),
             cash: 10000,
             portfolio: {},
+            friends: [],
             createdAt: Date.now(),
           });
+        } else if (!snap.data().nameLower) {
+          const existingName = snap.data().displayName || defaultName;
+          await setDoc(
+            userDocRef,
+            { displayName: existingName, nameLower: existingName.toLowerCase() },
+            { merge: true }
+          );
         }
 
         unsubUser = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
+            const currentName = data.displayName || defaultName;
             setCash(typeof data.cash === 'number' ? data.cash : 10000);
             setPortfolio(data.portfolio || {});
+            setDisplayName(currentName);
+            setNewNameInput((prev) => (prev === '' ? currentName : prev));
+            setFriendIds(Array.isArray(data.friends) ? data.friends : []);
           }
         });
       } catch (err) {
@@ -795,6 +821,27 @@ export default function App() {
     initAndSubscribeUser();
     return () => unsubUser();
   }, [user, authReady]);
+
+  // Real-time listener for all added friends
+  useEffect(() => {
+    if (!user || friendIds.length === 0) {
+      setFriendsData({});
+      return;
+    }
+
+    const unsubs = friendIds.map((fUid) =>
+      onSnapshot(doc(db, 'users', fUid), (docSnap) => {
+        if (docSnap.exists()) {
+          setFriendsData((prev) => ({
+            ...prev,
+            [fUid]: { uid: fUid, ...docSnap.data() },
+          }));
+        }
+      })
+    );
+
+    return () => unsubs.forEach((unsub) => unsub());
+  }, [user, friendIds.join(',')]);
 
   // Listen to market history
   useEffect(() => {
@@ -841,7 +888,6 @@ export default function App() {
     const price = basePlayers > 0 ? calcPrice(basePlayers) : 0;
     const openPrice = openBasePlayers > 0 ? calcPrice(openBasePlayers) : price;
 
-    // Red/Green % = Now vs. same time yesterday (falls back to open price if <24h of data)
     let changePct = 0;
     if (yesterdayPlayers && yesterdayPlayers > 0 && currentPlayers > 0) {
       changePct = Number(
@@ -879,6 +925,42 @@ export default function App() {
   const totalNetWorth = cash + investedValue;
   const totalProfit = investedValue - totalCostBasis;
 
+  // Build live enriched friends list sorted by Net Worth
+  const enrichedFriends = friendIds
+    .map((fUid) => friendsData[fUid])
+    .filter(Boolean)
+    .map((f) => {
+      const fCash = typeof f.cash === 'number' ? f.cash : 0;
+      const fHoldings = Object.entries(f.portfolio || {})
+        .filter(([, data]) => data.shares > 0.0001)
+        .map(([gameId, data]) => {
+          const game = enrichedGames.find((g) => g.id === gameId);
+          const currentPrice = game?.price || 0;
+          const currentValue = data.shares * currentPrice;
+          const profit = currentValue - data.totalCost;
+          return {
+            id: gameId,
+            ticker: game?.ticker || gameId.toUpperCase(),
+            title: game?.title || gameId,
+            shares: data.shares,
+            currentValue,
+            profit,
+          };
+        })
+        .sort((a, b) => b.currentValue - a.currentValue);
+
+      const fInvested = fHoldings.reduce((sum, h) => sum + h.currentValue, 0);
+      return {
+        uid: f.uid,
+        name: f.displayName || 'Trader',
+        cash: fCash,
+        investedValue: fInvested,
+        netWorth: fCash + fInvested,
+        holdings: fHoldings,
+      };
+    })
+    .sort((a, b) => b.netWorth - a.netWorth);
+
   const selectedGame = enrichedGames.find((g) => g.id === selectedGameId);
   const selectedHolding = selectedGameId ? portfolio[selectedGameId] : null;
   const selectedAvgBuy =
@@ -896,6 +978,83 @@ export default function App() {
         portfolio: nextPortfolio,
         updatedAt: Date.now(),
       },
+      { merge: true }
+    );
+  };
+
+  const handleSaveName = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    const clean = newNameInput.trim();
+    if (clean.length < 2 || clean.length > 20) {
+      setNameMsg('Name must be 2–20 characters.');
+      return;
+    }
+
+    setNameMsg('Saving...');
+    try {
+      const q = query(collection(db, 'users'), where('nameLower', '==', clean.toLowerCase()));
+      const snap = await getDocs(q);
+      const takenByOther = snap.docs.some((d) => d.id !== user.uid);
+      if (takenByOther) {
+        setNameMsg('That Trader Name is already taken.');
+        return;
+      }
+
+      await setDoc(
+        doc(db, 'users', user.uid),
+        { displayName: clean, nameLower: clean.toLowerCase(), updatedAt: Date.now() },
+        { merge: true }
+      );
+      setNameMsg('Saved! Friends can now search you by this name.');
+    } catch (err) {
+      setNameMsg(`Error: ${err.message}`);
+    }
+  };
+
+  const handleAddFriend = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    const target = friendSearch.trim().toLowerCase();
+    if (!target) return;
+
+    setFriendMsg('Searching...');
+    try {
+      const q = query(collection(db, 'users'), where('nameLower', '==', target));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        setFriendMsg('No trader found with that exact name. Ask them to check their Trader Name!');
+        return;
+      }
+
+      const found = snap.docs[0];
+      if (found.id === user.uid) {
+        setFriendMsg("That's you!");
+        return;
+      }
+      if (friendIds.includes(found.id)) {
+        setFriendMsg(`${found.data().displayName} is already in your friends list.`);
+        return;
+      }
+
+      await setDoc(
+        doc(db, 'users', user.uid),
+        { friends: arrayUnion(found.id) },
+        { merge: true }
+      );
+      setFriendSearch('');
+      setFriendMsg(`Added ${found.data().displayName}!`);
+    } catch (err) {
+      setFriendMsg(`Failed to add friend: ${err.message}`);
+    }
+  };
+
+  const handleRemoveFriend = async (fUid) => {
+    if (!user) return;
+    await setDoc(
+      doc(db, 'users', user.uid),
+      { friends: arrayRemove(fUid) },
       { merge: true }
     );
   };
@@ -1008,6 +1167,12 @@ export default function App() {
           >
             My Shares ({holdingsList.length})
           </button>
+          <button
+            className={`tab-btn ${activeTab === 'friends' ? 'active' : ''}`}
+            onClick={() => setActiveTab('friends')}
+          >
+            👥 Friends ({friendIds.length})
+          </button>
         </div>
 
         <div className="wallet-stats">
@@ -1037,7 +1202,7 @@ export default function App() {
                 <div>
                   <div className="stat-label">Trader</div>
                   <div className="stat-value" style={{ fontSize: '0.88rem', color: '#f0f6fc' }}>
-                    {user.displayName || user.email?.split('@')[0]}
+                    {displayName || user.email?.split('@')[0]}
                   </div>
                 </div>
                 <button
@@ -1118,9 +1283,7 @@ export default function App() {
                       <div className="card-title-row">
                         <div>
                           <div className="game-title">{game.title}</div>
-                          <div className="ticker-tag">
-                            {game.ticker} • LIVE MARKET
-                          </div>
+                          <div className="ticker-tag">{game.ticker} • LIVE MARKET</div>
                         </div>
                         <div className="price-block">
                           <div className="share-price">
@@ -1152,11 +1315,125 @@ export default function App() {
               })}
             </div>
           </>
+        ) : activeTab === 'shares' ? (
+          !user ? (
+            <div className="summary-card" style={{ textAlign: 'center', padding: '50px 20px' }}>
+              <h2 style={{ marginBottom: '10px' }}>Sign In to View Your Portfolio</h2>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+                Create an account to claim $10,000 in virtual trading cash and track your shares across devices.
+              </p>
+              <button className="sim-btn" onClick={() => setShowAuthModal(true)}>
+                Sign In / Create Account
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="controls-row">
+                <h2>My Shares & Live Profit</h2>
+                <button
+                  className="small-btn"
+                  style={{ background: 'var(--bg-card)', color: '#8b949e' }}
+                  onClick={resetAccount}
+                >
+                  Reset $10k Wallet
+                </button>
+              </div>
+
+              <div className="portfolio-summary">
+                <div className="summary-card">
+                  <h3>Total Net Worth</h3>
+                  <div className="big-num">
+                    $
+                    {totalNetWorth.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                </div>
+                <div className="summary-card">
+                  <h3>Invested Value</h3>
+                  <div className="big-num">
+                    $
+                    {investedValue.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                </div>
+                <div className="summary-card">
+                  <h3>Open Profit / Loss</h3>
+                  <div
+                    className="big-num"
+                    style={{ color: totalProfit >= 0 ? '#3fb950' : '#f85149' }}
+                  >
+                    {totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {holdingsList.length === 0 ? (
+                <div className="summary-card" style={{ textAlign: 'center', padding: '40px' }}>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '14px' }}>
+                    You don't own any game shares yet.
+                  </p>
+                  <button className="sim-btn" onClick={() => setActiveTab('market')}>
+                    Browse Live Games
+                  </button>
+                </div>
+              ) : (
+                holdingsList.map((h) => (
+                  <div key={h.id} className="holding-row">
+                    <div>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>
+                        {h.title} <span className="ticker-tag">({h.ticker})</span>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        {h.shares.toFixed(3)} shares • Avg Buy: ${h.avgBuyPrice.toFixed(2)} • Price: $
+                        {h.price.toFixed(2)} ({h.currentPlayers.toLocaleString()} live players)
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 800 }}>
+                        ${h.currentValue.toFixed(2)}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.88rem',
+                          fontWeight: 700,
+                          color: h.profit >= 0 ? '#3fb950' : '#f85149',
+                        }}
+                      >
+                        {h.profit >= 0 ? '+' : ''}${h.profit.toFixed(2)} ({h.profitPct >= 0 ? '+' : ''}
+                        {h.profitPct.toFixed(2)}%)
+                      </div>
+                    </div>
+
+                    <div className="holding-actions">
+                      <button
+                        className="small-btn"
+                        style={{ background: 'var(--bg-hover)', color: 'white' }}
+                        onClick={() => setSelectedGameId(h.id)}
+                      >
+                        Graph / Trade
+                      </button>
+                      <button
+                        className="small-btn cashout-btn"
+                        onClick={() => handleSell(h, h.currentValue)}
+                      >
+                        Sell All (${h.currentValue.toFixed(2)})
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )
         ) : !user ? (
           <div className="summary-card" style={{ textAlign: 'center', padding: '50px 20px' }}>
-            <h2 style={{ marginBottom: '10px' }}>Sign In to View Your Portfolio</h2>
+            <h2 style={{ marginBottom: '10px' }}>Sign In to Add Friends</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
-              Create an account to claim $10,000 in virtual trading cash and track your shares across devices.
+              Sign in to set your Trader Name, add friends, and track their net worth and investments live.
             </p>
             <button className="sim-btn" onClick={() => setShowAuthModal(true)}>
               Sign In / Create Account
@@ -1165,101 +1442,166 @@ export default function App() {
         ) : (
           <div>
             <div className="controls-row">
-              <h2>My Shares & Live Profit</h2>
-              <button
-                className="small-btn"
-                style={{ background: 'var(--bg-card)', color: '#8b949e' }}
-                onClick={resetAccount}
-              >
-                Reset $10k Wallet
-              </button>
+              <h2>👥 Friends & Live Portfolios</h2>
             </div>
 
-            <div className="portfolio-summary">
+            <div className="portfolio-summary" style={{ marginBottom: '22px' }}>
               <div className="summary-card">
-                <h3>Total Net Worth</h3>
-                <div className="big-num">
-                  $
-                  {totalNetWorth.toLocaleString('en-US', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </div>
-              </div>
-              <div className="summary-card">
-                <h3>Invested Value</h3>
-                <div className="big-num">
-                  $
-                  {investedValue.toLocaleString('en-US', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </div>
-              </div>
-              <div className="summary-card">
-                <h3>Open Profit / Loss</h3>
-                <div
-                  className="big-num"
-                  style={{ color: totalProfit >= 0 ? '#3fb950' : '#f85149' }}
+                <h3>Your Searchable Trader Name</h3>
+                <form
+                  onSubmit={handleSaveName}
+                  style={{ display: 'flex', gap: '8px', marginTop: '10px' }}
                 >
-                  {totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
-                </div>
+                  <input
+                    type="text"
+                    className="amount-input"
+                    value={newNameInput}
+                    onChange={(e) => setNewNameInput(e.target.value)}
+                    placeholder="Choose a unique name"
+                    style={{ marginBottom: 0 }}
+                  />
+                  <button
+                    type="submit"
+                    className="small-btn"
+                    style={{ background: '#238636', color: 'white', whiteSpace: 'nowrap' }}
+                  >
+                    Save Name
+                  </button>
+                </form>
+                {nameMsg && (
+                  <div style={{ fontSize: '0.82rem', color: '#58a6ff', marginTop: '8px' }}>
+                    {nameMsg}
+                  </div>
+                )}
+              </div>
+
+              <div className="summary-card">
+                <h3>Add a Friend by Name</h3>
+                <form
+                  onSubmit={handleAddFriend}
+                  style={{ display: 'flex', gap: '8px', marginTop: '10px' }}
+                >
+                  <input
+                    type="text"
+                    className="amount-input"
+                    value={friendSearch}
+                    onChange={(e) => setFriendSearch(e.target.value)}
+                    placeholder="Type friend's Trader Name..."
+                    style={{ marginBottom: 0 }}
+                  />
+                  <button
+                    type="submit"
+                    className="small-btn"
+                    style={{ background: '#1f6feb', color: 'white', whiteSpace: 'nowrap' }}
+                  >
+                    + Add Friend
+                  </button>
+                </form>
+                {friendMsg && (
+                  <div style={{ fontSize: '0.82rem', color: '#d29922', marginTop: '8px' }}>
+                    {friendMsg}
+                  </div>
+                )}
               </div>
             </div>
 
-            {holdingsList.length === 0 ? (
+            {enrichedFriends.length === 0 ? (
               <div className="summary-card" style={{ textAlign: 'center', padding: '40px' }}>
-                <p style={{ color: 'var(--text-muted)', marginBottom: '14px' }}>
-                  You don't own any game shares yet.
+                <p style={{ color: 'var(--text-muted)' }}>
+                  No friends added yet. Share your Trader Name (<strong>{displayName}</strong>) and type a friend's name above!
                 </p>
-                <button className="sim-btn" onClick={() => setActiveTab('market')}>
-                  Browse Live Games
-                </button>
               </div>
             ) : (
-              holdingsList.map((h) => (
-                <div key={h.id} className="holding-row">
-                  <div>
-                    <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>
-                      {h.title} <span className="ticker-tag">({h.ticker})</span>
+              enrichedFriends.map((f, index) => (
+                <div
+                  key={f.uid}
+                  className="summary-card"
+                  style={{ marginBottom: '16px', padding: '20px' }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '12px',
+                      borderBottom: '1px solid #21262d',
+                      paddingBottom: '12px',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>
+                        #{index + 1} {f.name}
+                      </div>
+                      <div style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        Cash:{' '}
+                        <strong style={{ color: '#f0f6fc' }}>
+                          ${f.cash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </strong>{' '}
+                        • Invested:{' '}
+                        <strong style={{ color: '#f0f6fc' }}>
+                          ${f.investedValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </strong>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      {h.shares.toFixed(3)} shares • Avg Buy: ${h.avgBuyPrice.toFixed(2)} • Price: $
-                      {h.price.toFixed(2)} ({h.currentPlayers.toLocaleString()} live players)
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          NET WORTH
+                        </div>
+                        <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#58a6ff' }}>
+                          ${f.netWorth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                      <button
+                        className="small-btn"
+                        style={{ background: '#21262d', color: '#f85149' }}
+                        onClick={() => handleRemoveFriend(f.uid)}
+                      >
+                        Remove
+                      </button>
                     </div>
                   </div>
 
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.15rem', fontWeight: 800 }}>
-                      ${h.currentValue.toFixed(2)}
+                  {f.holdings.length === 0 ? (
+                    <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+                      No active investments right now (100% cash).
                     </div>
-                    <div
-                      style={{
-                        fontSize: '0.88rem',
-                        fontWeight: 700,
-                        color: h.profit >= 0 ? '#3fb950' : '#f85149',
-                      }}
-                    >
-                      {h.profit >= 0 ? '+' : ''}${h.profit.toFixed(2)} ({h.profitPct >= 0 ? '+' : ''}
-                      {h.profitPct.toFixed(2)}%)
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {f.holdings.map((h) => (
+                        <button
+                          key={h.id}
+                          onClick={() => setSelectedGameId(h.id)}
+                          style={{
+                            background: '#0d1117',
+                            border: '1px solid #30363d',
+                            borderRadius: '8px',
+                            padding: '8px 12px',
+                            color: '#f0f6fc',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontSize: '0.84rem',
+                          }}
+                        >
+                          <strong>{h.ticker}</strong> • {h.shares.toFixed(2)} sh •{' '}
+                          <span style={{ color: '#58a6ff', fontWeight: 700 }}>
+                            ${h.currentValue.toFixed(2)}
+                          </span>{' '}
+                          <span
+                            style={{
+                              color: h.profit >= 0 ? '#3fb950' : '#f85149',
+                              fontWeight: 700,
+                            }}
+                          >
+                            ({h.profit >= 0 ? '+' : ''}${h.profit.toFixed(2)})
+                          </span>
+                        </button>
+                      ))}
                     </div>
-                  </div>
-
-                  <div className="holding-actions">
-                    <button
-                      className="small-btn"
-                      style={{ background: 'var(--bg-hover)', color: 'white' }}
-                      onClick={() => setSelectedGameId(h.id)}
-                    >
-                      Graph / Trade
-                    </button>
-                    <button
-                      className="small-btn cashout-btn"
-                      onClick={() => handleSell(h, h.currentValue)}
-                    >
-                      Sell All (${h.currentValue.toFixed(2)})
-                    </button>
-                  </div>
+                  )}
                 </div>
               ))
             )}
