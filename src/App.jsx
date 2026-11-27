@@ -1,9 +1,24 @@
 import { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, onSnapshot } from 'firebase/firestore';
+import {
+  getFirestore,
+  collection,
+  doc,
+  onSnapshot,
+  setDoc,
+  getDoc,
+} from 'firebase/firestore';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+} from 'firebase/auth';
 import './App.css';
 
-// 👇 PASTE YOUR FIREBASE WEB CONFIG HERE (from Firebase Project Settings -> Your Apps)
 const firebaseConfig = {
   apiKey: 'AIzaSyBl3w5TZ7flwkeoJ6SGUZZoXFmeIKieZFE',
   authDomain: 'gamestox.firebaseapp.com',
@@ -15,6 +30,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
 const steamCover = (appId) =>
   `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`;
@@ -133,7 +150,7 @@ const INITIAL_GAMES = [
   },
 ];
 
-// Price formula: 1 share = 1,000 real concurrent players
+// Price formula: 1 share = 1,000 24h rolling-average players
 const calcPrice = (players) => Number(Math.max(0.5, players / 1000).toFixed(2));
 
 function InteractiveRealChart({ realHistory, avgBuyPrice }) {
@@ -172,7 +189,8 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
   const chartW = width - padLeft - padRight;
   const chartH = height - padTop - padBottom;
 
-  const values = series.map((d) => d.players);
+  // Use rollingAvg for anti-cheat pricing if available, fallback to raw players for older ticks
+  const values = series.map((d) => d.rollingAvg ?? d.players);
   const avgPlayers = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
   const avgPrice = calcPrice(avgPlayers);
 
@@ -186,13 +204,17 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
   const getX = (idx) => padLeft + (idx / (series.length - 1)) * chartW;
   const getY = (val) => padTop + chartH - ((val - minVal) / range) * chartH;
 
-  const coords = series.map((d, i) => ({
-    x: getX(i),
-    y: getY(d.players),
-    players: d.players,
-    price: calcPrice(d.players),
-    timeLabel: d.timeLabel,
-  }));
+  const coords = series.map((d, i) => {
+    const pricedCount = d.rollingAvg ?? d.players;
+    return {
+      x: getX(i),
+      y: getY(pricedCount),
+      livePlayers: d.players,
+      pricedPlayers: pricedCount,
+      price: calcPrice(pricedCount),
+      timeLabel: d.timeLabel,
+    };
+  });
 
   const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
   const areaPath = `${linePath} L ${coords[coords.length - 1].x} ${padTop + chartH} L ${
@@ -212,9 +234,11 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
     selectedIndex !== null && selectedIndex < coords.length ? selectedIndex : coords.length - 1;
   const activePt = coords[activeIdx];
 
-  const isAboveAvg = activePt.players >= avgPlayers;
+  const isAboveAvg = activePt.pricedPlayers >= avgPlayers;
   const vsAvgPct =
-    avgPlayers > 0 ? (((activePt.players - avgPlayers) / avgPlayers) * 100).toFixed(2) : '0.00';
+    avgPlayers > 0
+      ? (((activePt.pricedPlayers - avgPlayers) / avgPlayers) * 100).toFixed(2)
+      : '0.00';
   const strokeColor = isAboveAvg ? '#3fb950' : '#f85149';
 
   const buyPlayersEquiv = avgBuyPrice ? avgBuyPrice * 1000 : null;
@@ -242,7 +266,7 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
               : `🟢 Latest Cloud Reading (${activePt.timeLabel})`}{' '}
             •{' '}
             <span style={{ color: isAboveAvg ? '#3fb950' : '#f85149', fontWeight: 700 }}>
-              {isAboveAvg ? `▲ +${vsAvgPct}% ABOVE` : `▼ ${vsAvgPct}% BELOW`} 24H Avg
+              {isAboveAvg ? `▲ +${vsAvgPct}% ABOVE` : `▼ ${vsAvgPct}% BELOW`} Period Baseline
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', flexWrap: 'wrap' }}>
@@ -250,10 +274,10 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
               ${activePt.price.toFixed(2)}
             </span>
             <span style={{ fontSize: '0.95rem', color: '#c9d1d9', fontWeight: 600 }}>
-              👥 {activePt.players.toLocaleString()} real players
+              🛡️ 24H Rolling Avg: {activePt.pricedPlayers.toLocaleString()}
             </span>
             <span style={{ fontSize: '0.82rem', color: '#8b949e' }}>
-              (24H Avg: {avgPlayers.toLocaleString()} / ${avgPrice.toFixed(2)})
+              (Live Snapshot: {activePt.livePlayers.toLocaleString()} players)
             </span>
           </div>
         </div>
@@ -269,7 +293,7 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
             fontWeight: 700,
           }}
         >
-          24/7 Cloud Feed ({realHistory.length} ticks)
+          24H Rolling Price ({realHistory.length} ticks)
         </div>
       </div>
 
@@ -323,7 +347,7 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
           fontSize="9"
           fontWeight="800"
         >
-          AVG ${avgPrice.toFixed(1)}
+          BASE ${avgPrice.toFixed(1)}
         </text>
 
         {buyY !== null && (
@@ -375,7 +399,7 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
               fontSize="10"
               fontWeight="700"
             >
-              HIGH {coords[highIdx].players.toLocaleString()}
+              HIGH ${coords[highIdx].price.toFixed(2)}
             </text>
             <text
               x={coords[lowIdx].x}
@@ -385,7 +409,7 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
               fontSize="10"
               fontWeight="700"
             >
-              LOW {coords[lowIdx].players.toLocaleString()}
+              LOW ${coords[lowIdx].price.toFixed(2)}
             </text>
           </>
         )}
@@ -427,23 +451,176 @@ function InteractiveRealChart({ realHistory, avgBuyPrice }) {
         }}
       >
         <span>{series[0]?.timeLabel}</span>
-        <span>Hover or click any point to inspect exact real player counts</span>
+        <span>Prices use a 24H rolling average so day/night cycles cannot be farmed</span>
         <span>{series[series.length - 1]?.timeLabel}</span>
       </div>
     </div>
   );
 }
 
+function AuthModal({ onClose }) {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    setError('');
+    setSubmitting(true);
+    try {
+      await signInWithPopup(auth, googleProvider);
+      onClose();
+    } catch (err) {
+      setError(err.message.replace('Firebase: ', ''));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+    try {
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      onClose();
+    } catch (err) {
+      setError(err.message.replace('Firebase: ', ''));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal-box"
+        style={{ maxWidth: '420px', padding: '28px' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+          }}
+        >
+          <h2>{isSignUp ? 'Create GameStox Account' : 'Sign In to Trade'}</h2>
+          <button className="close-btn" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <p style={{ color: '#8b949e', fontSize: '0.9rem', marginBottom: '18px' }}>
+          New accounts start with <strong>$10,000.00</strong> in cloud-saved trading cash.
+        </p>
+
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          disabled={submitting}
+          style={{
+            width: '100%',
+            padding: '12px',
+            borderRadius: '8px',
+            border: '1px solid #30363d',
+            background: '#f0f6fc',
+            color: '#0d1117',
+            fontWeight: 700,
+            fontSize: '0.95rem',
+            cursor: 'pointer',
+            marginBottom: '16px',
+          }}
+        >
+          Continue with Google
+        </button>
+
+        <div
+          style={{
+            textAlign: 'center',
+            color: '#8b949e',
+            fontSize: '0.8rem',
+            marginBottom: '16px',
+          }}
+        >
+          OR WITH EMAIL
+        </div>
+
+        <form onSubmit={handleEmailSubmit}>
+          <input
+            type="email"
+            placeholder="Email address"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="amount-input"
+            style={{ marginBottom: '10px' }}
+          />
+          <input
+            type="password"
+            placeholder="Password (min 6 characters)"
+            required
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="amount-input"
+            style={{ marginBottom: '14px' }}
+          />
+
+          {error && (
+            <div style={{ color: '#f85149', fontSize: '0.85rem', marginBottom: '12px' }}>
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="action-btn buy-btn"
+            style={{ width: '100%' }}
+          >
+            {submitting ? 'Please wait...' : isSignUp ? 'Create Account ($10k)' : 'Sign In'}
+          </button>
+        </form>
+
+        <div style={{ textAlign: 'center', marginTop: '14px', fontSize: '0.88rem', color: '#8b949e' }}>
+          {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+          <button
+            type="button"
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError('');
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#58a6ff',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            {isSignUp ? 'Sign In' : 'Sign Up'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
   const [historyMap, setHistoryMap] = useState({});
-  const [cash, setCash] = useState(() => {
-    const saved = localStorage.getItem('gamestox_cash');
-    return saved ? Number(saved) : 10000;
-  });
-  const [portfolio, setPortfolio] = useState(() => {
-    const saved = localStorage.getItem('gamestox_portfolio');
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [cash, setCash] = useState(10000);
+  const [portfolio, setPortfolio] = useState({});
   const [activeTab, setActiveTab] = useState('market');
   const [filter, setFilter] = useState('all');
   const [selectedGameId, setSelectedGameId] = useState(null);
@@ -451,15 +628,58 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
 
+  // Listen for Firebase Auth state changes
   useEffect(() => {
-    localStorage.setItem('gamestox_cash', cash.toString());
-  }, [cash]);
+    const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthReady(true);
+    });
+    return () => unsubAuth();
+  }, []);
 
+  // Load and sync logged-in user's portfolio from Firestore users/{uid}
   useEffect(() => {
-    localStorage.setItem('gamestox_portfolio', JSON.stringify(portfolio));
-  }, [portfolio]);
+    if (!authReady) return;
 
-  // Real-time Firestore listener (auto-updates whenever the 24/7 collector writes new data)
+    if (!user) {
+      setCash(10000);
+      setPortfolio({});
+      return;
+    }
+
+    const userDocRef = doc(db, 'users', user.uid);
+    let unsubUser = () => {};
+
+    const initAndSubscribeUser = async () => {
+      try {
+        const snap = await getDoc(userDocRef);
+        if (!snap.exists()) {
+          await setDoc(userDocRef, {
+            email: user.email || '',
+            displayName: user.displayName || user.email?.split('@')[0] || 'Trader',
+            cash: 10000,
+            portfolio: {},
+            createdAt: Date.now(),
+          });
+        }
+
+        unsubUser = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setCash(typeof data.cash === 'number' ? data.cash : 10000);
+            setPortfolio(data.portfolio || {});
+          }
+        });
+      } catch (err) {
+        console.error('Failed loading user portfolio:', err);
+      }
+    };
+
+    initAndSubscribeUser();
+    return () => unsubUser();
+  }, [user, authReady]);
+
+  // Real-time Firestore listener for market prices
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'market'), (snapshot) => {
       const nextMap = {};
@@ -488,15 +708,21 @@ export default function App() {
   const enrichedGames = INITIAL_GAMES.map((g) => {
     const playersHistory = historyMap[g.id] || [];
     const len = playersHistory.length;
-    const currentPlayers = len > 0 ? playersHistory[len - 1].players : 0;
-    const openPlayers = len > 0 ? playersHistory[0].players : currentPlayers;
+    const latestEntry = len > 0 ? playersHistory[len - 1] : null;
+    const firstEntry = len > 0 ? playersHistory[0] : null;
 
-    const price = currentPlayers > 0 ? calcPrice(currentPlayers) : 0;
-    const openPrice = openPlayers > 0 ? calcPrice(openPlayers) : price;
+    const currentPlayers = latestEntry ? latestEntry.players : 0;
+    const pricedPlayers = latestEntry ? latestEntry.rollingAvg ?? latestEntry.players : 0;
+    const openPricedPlayers = firstEntry
+      ? firstEntry.rollingAvg ?? firstEntry.players
+      : pricedPlayers;
+
+    const price = pricedPlayers > 0 ? calcPrice(pricedPlayers) : 0;
+    const openPrice = openPricedPlayers > 0 ? calcPrice(openPricedPlayers) : price;
     const changePct =
       openPrice > 0 ? Number((((price - openPrice) / openPrice) * 100).toFixed(2)) : 0;
 
-    return { ...g, playersHistory, currentPlayers, price, changePct };
+    return { ...g, playersHistory, currentPlayers, pricedPlayers, price, changePct };
   });
 
   const holdingsList = Object.entries(portfolio)
@@ -531,25 +757,51 @@ export default function App() {
       ? selectedHolding.totalCost / selectedHolding.shares
       : null;
 
-  const handleBuy = (game, dollarAmt) => {
+  const saveUserState = async (nextCash, nextPortfolio) => {
+    if (!user) return;
+    const userDocRef = doc(db, 'users', user.uid);
+    await setDoc(
+      userDocRef,
+      {
+        cash: nextCash,
+        portfolio: nextPortfolio,
+        updatedAt: Date.now(),
+      },
+      { merge: true }
+    );
+  };
+
+  const handleBuy = async (game, dollarAmt) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
     const amount = Number(dollarAmt);
     if (!amount || amount <= 0 || amount > cash || game.price <= 0) return;
     const sharesBought = amount / game.price;
 
-    setCash((c) => Number((c - amount).toFixed(2)));
-    setPortfolio((prev) => {
-      const existing = prev[game.id] || { shares: 0, totalCost: 0 };
-      return {
-        ...prev,
-        [game.id]: {
-          shares: existing.shares + sharesBought,
-          totalCost: existing.totalCost + amount,
-        },
-      };
-    });
+    const nextCash = Number((cash - amount).toFixed(2));
+    const existing = portfolio[game.id] || { shares: 0, totalCost: 0 };
+    const nextPortfolio = {
+      ...portfolio,
+      [game.id]: {
+        shares: existing.shares + sharesBought,
+        totalCost: existing.totalCost + amount,
+      },
+    };
+
+    setCash(nextCash);
+    setPortfolio(nextPortfolio);
+    await saveUserState(nextCash, nextPortfolio);
   };
 
-  const handleSell = (game, dollarAmt) => {
+  const handleSell = async (game, dollarAmt) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
     const existing = portfolio[game.id];
     if (!existing || existing.shares <= 0 || game.price <= 0) return;
 
@@ -561,28 +813,30 @@ export default function App() {
     const fractionSold = sharesSold / existing.shares;
     const costRemoved = existing.totalCost * fractionSold;
 
-    setCash((c) => Number((c + sellDollars).toFixed(2)));
-    setPortfolio((prev) => {
-      const remainingShares = existing.shares - sharesSold;
-      if (remainingShares < 0.0001) {
-        const copy = { ...prev };
-        delete copy[game.id];
-        return copy;
-      }
-      return {
-        ...prev,
-        [game.id]: {
-          shares: remainingShares,
-          totalCost: existing.totalCost - costRemoved,
-        },
+    const nextCash = Number((cash + sellDollars).toFixed(2));
+    const remainingShares = existing.shares - sharesSold;
+    const nextPortfolio = { ...portfolio };
+
+    if (remainingShares < 0.0001) {
+      delete nextPortfolio[game.id];
+    } else {
+      nextPortfolio[game.id] = {
+        shares: remainingShares,
+        totalCost: existing.totalCost - costRemoved,
       };
-    });
+    }
+
+    setCash(nextCash);
+    setPortfolio(nextPortfolio);
+    await saveUserState(nextCash, nextPortfolio);
   };
 
-  const resetAccount = () => {
+  const resetAccount = async () => {
+    if (!user) return;
     if (!window.confirm('Reset your cash back to $10,000 and clear all shares?')) return;
     setCash(10000);
     setPortfolio({});
+    await saveUserState(10000, {});
   };
 
   const filteredGames = enrichedGames.filter((g) => {
@@ -628,24 +882,53 @@ export default function App() {
         </div>
 
         <div className="wallet-stats">
-          <div className="stat-pill">
-            <div className="stat-label">Available Cash</div>
-            <div className="stat-value">
-              ${cash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-          </div>
-          <div className="stat-pill">
-            <div className="stat-label">Net Worth</div>
-            <div className="stat-value" style={{ color: '#58a6ff' }}>
-              ${totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-          </div>
-          <div className="stat-pill">
-            <div className="stat-label">Cloud Status</div>
-            <div className="stat-value" style={{ color: '#3fb950', fontSize: '0.9rem' }}>
-              {isLoading ? 'Connecting...' : '● 24/7 Live'}
-            </div>
-          </div>
+          {user ? (
+            <>
+              <div className="stat-pill">
+                <div className="stat-label">Available Cash</div>
+                <div className="stat-value">
+                  $
+                  {cash.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              </div>
+              <div className="stat-pill">
+                <div className="stat-label">Net Worth</div>
+                <div className="stat-value" style={{ color: '#58a6ff' }}>
+                  $
+                  {totalNetWorth.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              </div>
+              <div className="stat-pill" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div>
+                  <div className="stat-label">Trader</div>
+                  <div className="stat-value" style={{ fontSize: '0.88rem', color: '#f0f6fc' }}>
+                    {user.displayName || user.email?.split('@')[0]}
+                  </div>
+                </div>
+                <button
+                  className="small-btn"
+                  style={{ background: '#21262d', color: '#c9d1d9', padding: '6px 10px' }}
+                  onClick={() => signOut(auth)}
+                >
+                  Log Out
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              className="sim-btn"
+              style={{ padding: '10px 18px', fontWeight: 700 }}
+              onClick={() => setShowAuthModal(true)}
+            >
+              Sign In / Start with $10k
+            </button>
+          )}
         </div>
       </nav>
 
@@ -653,7 +936,7 @@ export default function App() {
         {activeTab === 'market' ? (
           <>
             <div className="controls-row">
-              <h2>24/7 Live Game Stocks</h2>
+              <h2>24/7 Live Game Stocks {isLoading ? '(Syncing...)' : ''}</h2>
               <div className="filter-pills">
                 <button
                   className={`pill ${filter === 'all' ? 'active' : ''}`}
@@ -705,7 +988,7 @@ export default function App() {
                         <div>
                           <div className="game-title">{game.title}</div>
                           <div className="ticker-tag">
-                            {game.ticker} • {game.source.toUpperCase()} LIVE
+                            {game.ticker} • 24H ROLLING PRICE
                           </div>
                         </div>
                         <div className="price-block">
@@ -722,7 +1005,7 @@ export default function App() {
 
                       <div className="card-footer">
                         <span>
-                          👥 {game.currentPlayers > 0 ? game.currentPlayers.toLocaleString() : '---'} real players
+                          👥 {game.currentPlayers > 0 ? game.currentPlayers.toLocaleString() : '---'} live
                         </span>
                         {owned ? (
                           <span style={{ color: '#58a6ff', fontWeight: 700 }}>
@@ -738,6 +1021,16 @@ export default function App() {
               })}
             </div>
           </>
+        ) : !user ? (
+          <div className="summary-card" style={{ textAlign: 'center', padding: '50px 20px' }}>
+            <h2 style={{ marginBottom: '10px' }}>Sign In to View Your Portfolio</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Create an account to claim $10,000 in virtual trading cash and track your shares across devices.
+            </p>
+            <button className="sim-btn" onClick={() => setShowAuthModal(true)}>
+              Sign In / Create Account
+            </button>
+          </div>
         ) : (
           <div>
             <div className="controls-row">
@@ -755,13 +1048,21 @@ export default function App() {
               <div className="summary-card">
                 <h3>Total Net Worth</h3>
                 <div className="big-num">
-                  ${totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  $
+                  {totalNetWorth.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </div>
               </div>
               <div className="summary-card">
                 <h3>Invested Value</h3>
                 <div className="big-num">
-                  ${investedValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  $
+                  {investedValue.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </div>
               </div>
               <div className="summary-card">
@@ -792,8 +1093,8 @@ export default function App() {
                       {h.title} <span className="ticker-tag">({h.ticker})</span>
                     </div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      {h.shares.toFixed(3)} shares • Avg Buy: ${h.avgBuyPrice.toFixed(2)} • Live: $
-                      {h.price.toFixed(2)} ({h.currentPlayers.toLocaleString()} real players)
+                      {h.shares.toFixed(3)} shares • Avg Buy: ${h.avgBuyPrice.toFixed(2)} • Price: $
+                      {h.price.toFixed(2)} ({h.currentPlayers.toLocaleString()} live players)
                     </div>
                   </div>
 
@@ -857,7 +1158,7 @@ export default function App() {
                   {selectedGame.title} ({selectedGame.ticker})
                 </h2>
                 <span style={{ color: '#c9d1d9', fontSize: '0.9rem' }}>
-                  👥 {selectedGame.currentPlayers.toLocaleString()} Real Players • Share Price:{' '}
+                  👥 {selectedGame.currentPlayers.toLocaleString()} Live Players • Share Price:{' '}
                   <strong style={{ color: 'white' }}>${selectedGame.price.toFixed(2)}</strong>
                 </span>
               </div>
@@ -873,96 +1174,124 @@ export default function App() {
               />
             </div>
 
-            <div className="trade-panel">
-              <div className="trade-box">
-                <h4 style={{ marginBottom: '8px' }}>Trade Amount ($)</h4>
-                <input
-                  type="number"
-                  className="amount-input"
-                  value={tradeAmount}
-                  onChange={(e) => setTradeAmount(e.target.value)}
-                  min="1"
-                />
-                <div className="quick-amounts">
-                  <button className="amt-btn" onClick={() => setTradeAmount('100')}>
-                    $100
-                  </button>
-                  <button className="amt-btn" onClick={() => setTradeAmount('500')}>
-                    $500
-                  </button>
-                  <button
-                    className="amt-btn"
-                    onClick={() => setTradeAmount(Math.floor(cash * 0.25).toString())}
-                  >
-                    25% Cash
-                  </button>
-                  <button
-                    className="amt-btn"
-                    onClick={() => setTradeAmount(Math.floor(cash).toString())}
-                  >
-                    MAX
-                  </button>
-                </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  ≈{' '}
-                  {selectedGame.price > 0
-                    ? ((Number(tradeAmount) || 0) / selectedGame.price).toFixed(3)
-                    : '0.000'}{' '}
-                  shares of {selectedGame.ticker}
-                </div>
-              </div>
-
+            {!user ? (
               <div
-                className="trade-box"
                 style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
+                  background: '#161b22',
+                  border: '1px solid #30363d',
+                  borderRadius: '10px',
+                  padding: '20px',
+                  textAlign: 'center',
                 }}
               >
-                <div>
-                  <h4 style={{ marginBottom: '6px' }}>Your Position</h4>
-                  {portfolio[selectedGame.id] ? (
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                      You own <strong>{portfolio[selectedGame.id].shares.toFixed(3)} shares</strong>{' '}
-                      worth{' '}
-                      <strong style={{ color: 'white' }}>
-                        ${(portfolio[selectedGame.id].shares * selectedGame.price).toFixed(2)}
-                      </strong>
-                    </p>
-                  ) : (
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                      You don't own shares in this game yet.
-                    </p>
-                  )}
+                <p style={{ color: '#c9d1d9', marginBottom: '12px' }}>
+                  Sign in to buy or sell <strong>{selectedGame.ticker}</strong> with your $10,000 portfolio.
+                </p>
+                <button
+                  className="action-btn buy-btn"
+                  style={{ maxWidth: '260px', margin: '0 auto' }}
+                  onClick={() => {
+                    setSelectedGameId(null);
+                    setShowAuthModal(true);
+                  }}
+                >
+                  Sign In to Trade
+                </button>
+              </div>
+            ) : (
+              <div className="trade-panel">
+                <div className="trade-box">
+                  <h4 style={{ marginBottom: '8px' }}>Trade Amount ($)</h4>
+                  <input
+                    type="number"
+                    className="amount-input"
+                    value={tradeAmount}
+                    onChange={(e) => setTradeAmount(e.target.value)}
+                    min="1"
+                  />
+                  <div className="quick-amounts">
+                    <button className="amt-btn" onClick={() => setTradeAmount('100')}>
+                      $100
+                    </button>
+                    <button className="amt-btn" onClick={() => setTradeAmount('500')}>
+                      $500
+                    </button>
+                    <button
+                      className="amt-btn"
+                      onClick={() => setTradeAmount(Math.floor(cash * 0.25).toString())}
+                    >
+                      25% Cash
+                    </button>
+                    <button
+                      className="amt-btn"
+                      onClick={() => setTradeAmount(Math.floor(cash).toString())}
+                    >
+                      MAX
+                    </button>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    ≈{' '}
+                    {selectedGame.price > 0
+                      ? ((Number(tradeAmount) || 0) / selectedGame.price).toFixed(3)
+                      : '0.000'}{' '}
+                    shares of {selectedGame.ticker}
+                  </div>
                 </div>
 
-                <div>
-                  <button
-                    className="action-btn buy-btn"
-                    disabled={
-                      !Number(tradeAmount) || Number(tradeAmount) > cash || selectedGame.price <= 0
-                    }
-                    onClick={() => handleBuy(selectedGame, tradeAmount)}
-                  >
-                    Buy ${Number(tradeAmount) || 0} of {selectedGame.ticker}
-                  </button>
+                <div
+                  className="trade-box"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <h4 style={{ marginBottom: '6px' }}>Your Position</h4>
+                    {portfolio[selectedGame.id] ? (
+                      <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                        You own <strong>{portfolio[selectedGame.id].shares.toFixed(3)} shares</strong>{' '}
+                        worth{' '}
+                        <strong style={{ color: 'white' }}>
+                          ${(portfolio[selectedGame.id].shares * selectedGame.price).toFixed(2)}
+                        </strong>
+                      </p>
+                    ) : (
+                      <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                        You don't own shares in this game yet.
+                      </p>
+                    )}
+                  </div>
 
-                  <button
-                    className="action-btn sell-btn"
-                    disabled={
-                      !portfolio[selectedGame.id] || !Number(tradeAmount) || selectedGame.price <= 0
-                    }
-                    onClick={() => handleSell(selectedGame, tradeAmount)}
-                  >
-                    Sell ${Number(tradeAmount) || 0} of {selectedGame.ticker}
-                  </button>
+                  <div>
+                    <button
+                      className="action-btn buy-btn"
+                      disabled={
+                        !Number(tradeAmount) || Number(tradeAmount) > cash || selectedGame.price <= 0
+                      }
+                      onClick={() => handleBuy(selectedGame, tradeAmount)}
+                    >
+                      Buy ${Number(tradeAmount) || 0} of {selectedGame.ticker}
+                    </button>
+
+                    <button
+                      className="action-btn sell-btn"
+                      disabled={
+                        !portfolio[selectedGame.id] || !Number(tradeAmount) || selectedGame.price <= 0
+                      }
+                      onClick={() => handleSell(selectedGame, tradeAmount)}
+                    >
+                      Sell ${Number(tradeAmount) || 0} of {selectedGame.ticker}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
+
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
     </div>
   );
 }
