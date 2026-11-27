@@ -4,10 +4,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 const rawSecret = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
 const jsonString = rawSecret.startsWith('{') ? rawSecret : Buffer.from(rawSecret, 'base64').toString('utf8');
 const serviceAccount = JSON.parse(jsonString);
-console.log('PROJECT:', serviceAccount.project_id);
-console.log('KEY LENGTH:', serviceAccount.private_key?.length);
-console.log('STARTS WITH:', JSON.stringify(serviceAccount.private_key?.slice(0, 35)));
-console.log('ENDS WITH:', JSON.stringify(serviceAccount.private_key?.slice(-35)));
+
 initializeApp({ credential: cert(serviceAccount) });
 const db = getFirestore();
 
@@ -23,6 +20,8 @@ const GAMES = [
   { id: 'elden', source: 'steam', appId: 1245620 },
   { id: 'balatro', source: 'steam', appId: 2379780 },
 ];
+
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 async function getCount(game) {
   try {
@@ -45,11 +44,14 @@ async function getCount(game) {
 }
 
 async function run() {
-  const nowLabel = new Date().toLocaleTimeString('en-US', {
+  const now = Date.now();
+  const cutoff24h = now - TWENTY_FOUR_HOURS_MS;
+
+  const nowLabel = new Date(now).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'UTC',
-  }) + ' UTC';
+    timeZone: 'Asia/Jerusalem',
+  });
 
   for (const game of GAMES) {
     const count = await getCount(game);
@@ -59,9 +61,37 @@ async function run() {
     const snap = await docRef.get();
     const existing = snap.exists ? snap.data().history || [] : [];
 
-    const updatedHistory = [...existing.slice(-287), { players: count, timeLabel: nowLabel }];
-    await docRef.set({ history: updatedHistory, updatedAt: Date.now() }, { merge: true });
-    console.log(`Updated ${game.id}: ${count}`);
+    // Keep ticks from the last 24 hours (fallback keeps legacy ticks without timestamp)
+    const recentTicks = existing
+      .filter((entry) => !entry.timestamp || entry.timestamp >= cutoff24h)
+      .slice(-287);
+
+    // Calculate true 24-hour rolling average
+    const allTicksForAvg = [...recentTicks, { players: count }];
+    const rolling24hAvg = Math.round(
+      allTicksForAvg.reduce((sum, entry) => sum + entry.players, 0) / allTicksForAvg.length
+    );
+
+    const newTick = {
+      players: count,
+      rollingAvg: rolling24hAvg,
+      timeLabel: nowLabel,
+      timestamp: now,
+    };
+
+    const updatedHistory = [...recentTicks, newTick];
+
+    await docRef.set(
+      {
+        history: updatedHistory,
+        livePlayers: count,
+        rolling24hPlayers: rolling24hAvg,
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+
+    console.log(`Updated ${game.id}: live=${count}, 24hAvg=${rolling24hAvg}`);
   }
 }
 
