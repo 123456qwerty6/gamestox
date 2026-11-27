@@ -125,15 +125,6 @@ async function run() {
       fairPlayers = Math.round(rolling24hAvg * ratio);
     }
 
-    // Quietly decay the hidden user-demand multiplier back toward 1.0 (5% per 5-min tick)
-    const demandRef = db.collection('demand').doc(game.id);
-    const demandSnap = await demandRef.get();
-    let demandMult = demandSnap.exists ? Number(demandSnap.data().multiplier || 1) : 1;
-    if (Math.abs(demandMult - 1) > 0.0005) {
-      demandMult = Number((1 + (demandMult - 1) * 0.95).toFixed(4));
-      await demandRef.set({ multiplier: demandMult, updatedAt: now }, { merge: true });
-    }
-
     const effectivePlayers = Math.round(fairPlayers * demandMult);
 
     const newTick = {
