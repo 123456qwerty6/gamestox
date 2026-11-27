@@ -55,14 +55,25 @@ async function getCount(game) {
       return json?.data?.[0]?.playing ?? null;
     }
     if (game.source === 'fortnite') {
-      const url = 'https://api.fortnite.com/ecosystem/v1/metrics/minute/in-client-peak-ccu';
+      const fromIso = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+      const url = `https://api.fortnite.com/ecosystem/v1/metrics/minute/in-client-peak-ccu?from=${encodeURIComponent(fromIso)}`;
       const res = await fetch(url, { headers: { Accept: 'application/json' } });
-      if (!res.ok) return null;
+
+      if (!res.ok) {
+        console.warn(`Fortnite API HTTP ${res.status}`);
+        return null;
+      }
+
       const json = await res.json();
       const list = json?.intervals ?? json?.inClientPeakCcu ?? json?.data ?? (Array.isArray(json) ? json : []);
       const valid = list.filter((item) => typeof item?.value === 'number' && item.value > 0);
       const latest = valid[valid.length - 1];
-      return latest ? latest.value : null;
+
+      if (!latest) {
+        console.warn('Fortnite returned no valid intervals');
+        return null;
+      }
+      return latest.value;
     }
   } catch (e) {
     console.error(`Failed ${game.id}:`, e);
